@@ -128,6 +128,9 @@
  C:/Users/Crac/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/spi_flash/include/esp_spi_flash_counters.h \
  C:/Users/Crac/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/esp_hw_support/include/soc/esp32/spiram.h \
  .pio/libdeps/esp32dev/AsserBas/src/espBLEcan.h \
+ .pio/libdeps/esp32dev/AsserBas/src/CRAC_utility.h \
+ .pio/libdeps/esp32dev/AsserBas/src/ident_crac.h \
+ .pio/libdeps/esp32dev/AsserBas/src/buffer_circulaire.h \
  .pio/libdeps/esp32dev/CAN/src/CAN.h \
  .pio/libdeps/esp32dev/CAN/src/ESP32SJA1000.h \
  .pio/libdeps/esp32dev/CAN/src/CANController.h \
@@ -165,8 +168,6 @@
  C:/Users/Crac/.platformio/packages/framework-arduinoespressif32/libraries/Wire/src/Wire.h \
  C:/Users/Crac/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal.h \
  .pio/libdeps/esp32dev/AsserBas/src/CRAC_utility.h \
- .pio/libdeps/esp32dev/AsserBas/src/ident_crac.h \
- .pio/libdeps/esp32dev/AsserBas/src/buffer_circulaire.h \
  .pio/libdeps/esp32dev/AsserBas/src/ident_crac.h \
  .pio/libdeps/esp32dev/AsserBas/src/buffer_circulaire.h \
  .pio/libdeps/esp32dev/AsserBas/src/clotho.h

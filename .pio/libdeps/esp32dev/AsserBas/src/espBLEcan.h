@@ -1,5 +1,6 @@
 //----------------------------------------------------------------------Bibliotheques
 #include <Arduino.h>
+#include "CRAC_utility.h"
 #include <CAN.h>
 #include <BLEDevice.h>
 #include <BLEServer.h>
@@ -48,3 +49,58 @@ typedef struct CANMessage {
   unsigned char dt[8] = {0};
 } CANMessage;
 
+CANMessage myData;//data received by BT to write on CAN
+CANMessage DATAtoSend;//data received by CAN to send on BT
+
+CANMessage DATAtoControl;//data received by CAN to control the robot
+CANMessage DATArobot;//DATA that the robot will write on CAN
+
+//----------------------------------------------------------------------prototypes fonctions BLE et CAN
+
+
+static void notifyCallback(
+  BLERemoteCharacteristic* pBLERemoteCharacteristic,
+  uint8_t* pData,
+  size_t length,
+  bool isNotify);
+
+
+static void CANNotifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristic, uint8_t* pData, size_t length, bool isNotify);
+
+
+char vitesse_danger = 0, Stop_Danger = 0, asser_actif = 1, attente = 0, mode_xyt = 0,
+                finMvtElem = 0, finRecalage = 0, finRayonCourbure = 0,finRayonCourbureClo = 0, finXYT = 0,  Fin_Match = 0, Message_Fin_Mouvement = 0, explosionErreur = 0; 
+int nb_ordres = 0;
+// Tout plein de flags
+short           etat_automate = 0, etat_automate_depl = 0, new_message = 0,
+                xytheta_sens, next_move_xyt = 0, next_move = 0, i, stop = 0, stop_receive = 0, param_xytheta[3],
+                etat_automate_xytheta = 0, ralentare = 0;
+
+void CAN_ReceiveMsgX_Y_Theta(void);
+                            
+void CAN_ReceiveMsgRayon_de_courbure(void);
+                            
+void CAN_ReceiveMsgParametres(void);
+                            
+void CAN_ReceiveMsgRotation(void);
+                            
+void CAN_ReceiveMsgLigne_Droite(void);
+                            
+void CAN_ReceiveMsgCourbe_Bezier(void);
+                            
+void CAN_ReceiveMsgOdo_PR(void);
+                            
+void CAN_ReceiveMsgVitesse_PR(void);
+                            
+void CAN_ReceiveMsgOdo_GR(void);
+                            
+void CAN_ReceiveMsgVitesse_GR(void);
+                            
+void CAN_ReceiveMsgEnd_Game(void);
+                            
+void CAN_ReceiveMsgStop(void);
+                            
+void CAN_ReceiveMsgCheck(void);
+                            
+void CAN_ReceiveMsgReset(void);
+                            

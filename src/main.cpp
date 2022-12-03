@@ -7,11 +7,6 @@
 #include "clotho.h"
 //----------------------------------------------------------------------Variables
 
-CANMessage myData;//data received by BT
-CANMessage DATAtoSend;//to send on BT
-
-CANMessage DATAtoControl;//data to control the robot
-CANMessage DATArobot;//DATA that the robot will send
 
 bool set = false;
 
@@ -39,18 +34,13 @@ double          consigne_pos, consigne_vit,                 // Consignes de posi
                 roue_drt_init, roue_gch_init,               // Valeur des compteurs (!= 0) quand on commence un nouveau mouvement
                 global_ta_stop=0,global_decel_stop=0,
                 old_posD=0,old_posG=0;
-// Tout plein de flags
-short           etat_automate = 0, etat_automate_depl = 0, new_message = 0,
-                xytheta_sens, next_move_xyt = 0, next_move = 0, i, stop = 0, stop_receive = 0, param_xytheta[3],
-                etat_automate_xytheta = 0, ralentare = 0;
+
                 
 unsigned short cpt = 0,cpt_arret=0;
 
 int cpt_ordre = 0;
                 
-char vitesse_danger = 0, Stop_Danger = 0, asser_actif = 1, attente = 0, mode_xyt = 0,
-                finMvtElem = 0, finRecalage = 0, finRayonCourbure = 0,finRayonCourbureClo = 0, finXYT = 0,  Fin_Match = 0, Message_Fin_Mouvement = 0, explosionErreur = 0; 
-int nb_ordres = 0;
+
                 
 volatile uint16_t          mscount = 0,      // Compteur utilisé pour envoyer échantillonner les positions et faire l'asservissement
                          mscount1 = 0,     // Compteur utilisé pour envoyer échantillonner les positions et faire l'asservissement
@@ -109,25 +99,16 @@ void setupCAN();
 void writeStructInCAN(const CANMessage &theDATA);
 void canReadData(int packetSize);
 void canReadExtRtr();
-void BLEloop();
+void CANloop();
 void slaveBTConnect(std::string name);
 bool connectToServer(BLEAddress pAddress);
 void readDATA();
 void remplirStruct(int id, char len, char dt0, char dt1, char dt2, char dt3, char dt4, char dt5, char dt6, char dt7);
+void CANenvoiMsg1x8Bytes(uint32_t id, void *pdata);
+void CANenvoiMsg2x4Bytes(uint32_t id, void *pdata1, void *pdata2);
 
 //----------------------------------------------------------------------callback fonctions
-static void notifyCallback(
-  BLERemoteCharacteristic* pBLERemoteCharacteristic,
-  uint8_t* pData,
-  size_t length,
-  bool isNotify) {
-    Serial.print("Notify callback for characteristic ");
-    Serial.print(pBLERemoteCharacteristic->getUUID().toString().c_str());
-    Serial.print(" of data length ");
-    Serial.println(length);
-    Serial.print("data: ");
-    Serial.println((char*)pData);
-}
+
 
 class MyClientCallback : public BLEClientCallbacks {
   void onConnect(BLEClient* pclient) {
@@ -152,11 +133,6 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
 };
 
 
-static void CANNotifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristic, uint8_t* pData, size_t length, bool isNotify) {
-  //store can value
-  contenuBt = (char*)pData;
-  newCan = true;
-}
 
 
 void Moteur_Init();
@@ -167,9 +143,11 @@ void setupPWM(int PWMpin, int PWMChannel);
 void setup() {
   Serial.begin(115200);
   setupCAN();
+
   //Init BLE device
   slaveBTConnect("ESP32EA");
   Serial.printf("fin ble init\n");
+
   Encodeur_Init();
   Serial.printf("fin encodeur init\n");
   Moteur_Init();
@@ -185,10 +163,11 @@ void setup() {
   Serial.printf("envoie CAN\n");
 
   Serial.println("fin setup\n");
+  liste.type = TYPE_DEPLACEMENT_BEZIER;//test
 }
 //----------------------------------------------------------------------loop
 void loop() {
-  //BLEloop();
+  CANloop();
   calcul();
   Odometrie();
 
@@ -368,7 +347,7 @@ void calcul(void){//fait!!
                     Serial.println("ID_TRAIT");
                     remplirStruct(ID_TRAIT, 2, 0x03, compteurMvnt,0,0,0,0,0,0);
                     writeStructInCAN(DATArobot);                             //CAN
-                    //CANenvoiMsg2x1Byte(ID_TRAIT, 3, compteurMvnt);
+                    ////CANenvoiMsg2x1Byte(ID_TRAIT, 3, compteurMvnt);
                     #endif
                     
                     switch(liste.type)
@@ -515,7 +494,7 @@ void calcul(void){//fait!!
             roue_drt_init = lireCodeurD();
             roue_gch_init = lireCodeurG();
             
-            CANenvoiMsg2x1Byte(INSTRUCTION_END_MOTEUR, Message_Fin_Mouvement, 0);
+            //CANenvoiMsg2x1Byte(INSTRUCTION_END_MOTEUR, Message_Fin_Mouvement, 0);
             
             //On vide le buffer de mouvements et on prévoit de s'asservir sur la position atteinte
             for(i = 0;i<nb_ordres;i++)  liste[i] = (struct Ordre_deplacement){0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
@@ -1215,13 +1194,13 @@ void trait_Mouvement_Elementaire_Gene(struct Ordre_deplacement* monDpl)//fait
 
     // CANenvoiMsg4x2Bytes(ID_TEMPS, ta, tc, td, 0x100 | (0xFF & etat_automate_depl));
     
-    //CANenvoiMsg2x4Bytes(ID_TEMPS_LONG_1, &ta, &tc);
+    CANenvoiMsg2x4Bytes(ID_TEMPS_LONG_1, &ta, &tc);
     
     //CANenvoiMsg1x4Bytes(ID_TEMPS_LONG_2, &td);
     
-    //CANenvoiMsg2x4Bytes(ID_DBUG_LIGNE_GENE_VIT, &vinitAbs, &vfinAbs); 
+    CANenvoiMsg2x4Bytes(ID_DBUG_LIGNE_GENE_VIT, &vinitAbs, &vfinAbs); 
     
-    //CANenvoiMsg2x4Bytes(ID_DIST_TIC_GENE, &monDpl->distance, &posCalc);
+    CANenvoiMsg2x4Bytes(ID_DIST_TIC_GENE, &monDpl->distance, &posCalc);
     
     #endif
     
@@ -1305,9 +1284,9 @@ void trait_Rayon_De_Courbure_Clotho(struct Ordre_deplacement* monDpl)
     
     
     #if F_DBUG_CLOTHO_TRAIT_TPS
-        /*
-        CANenvoiMsg2x4Bytes(ID_TEMPS_LONG_1, &ta, &tc);
         
+        CANenvoiMsg2x4Bytes(ID_TEMPS_LONG_1, &ta, &tc);
+        /*
         CANenvoiMsg4Bytes(ID_TEMPS_LONG_2, &td);
 
         CANenvoiMsg2x2Bytes(ID_DBUG_LIGNE_GENE_VIT, monDpl->vinit, monDpl->vinit); */
@@ -1341,8 +1320,8 @@ void Mouvement_Elementaire_Gene(struct Ordre_deplacement monDpl)//fait
     if(mscount2 >= (1000/TE_100US))    
     {
         mscount2 = 0;
-        //CANenvoiMsg1x8Bytes(ID_VIT, &consigne_vit);
-        //CANenvoiMsg1x8Bytes(ID_POS, &consigne_pos);
+        CANenvoiMsg1x8Bytes(ID_VIT, &consigne_vit);
+        CANenvoiMsg1x8Bytes(ID_POS, &consigne_pos);
     }
     #endif
     //Declaration des variables
@@ -1392,14 +1371,14 @@ void Mouvement_Elementaire_Gene(struct Ordre_deplacement monDpl)//fait
         if(tc) etat_automate_depl = ACCELERATION_TRAPEZE;
         else etat_automate_depl = ACCELERATION_TRIANGLE;
         
-        #if F_DBUG_LIGNE_GEN_TPS/*
+        #if F_DBUG_LIGNE_GEN_TPS
         CANenvoiMsg2x4Bytes(ID_TEMPS_LONG_1, &ta, &tc);
-        
+        /*
         CANenvoiMsg1x4Bytes(ID_TEMPS_LONG_2, &td);                
         
         CANenvoiMsg2x2Bytes(ID_DBUG_LIGNE_GENE_VIT, vinit, vfin);
-        
-        CANenvoiMsg2x4Bytes(ID_DIST_TIC_GENE, &pcons, &pcons);*/
+        */
+        CANenvoiMsg2x4Bytes(ID_DIST_TIC_GENE, &pcons, &pcons);
         
         #endif
         
@@ -1595,10 +1574,10 @@ void Rayon_De_Courbure_Clotho(struct Ordre_deplacement monDpl)//fait
     if(mscount2 >= (106600/TE_100US))//envoyer des informations régulièrement
     {
         mscount2 = 0;
-        /*CANenvoiMsg1x8Bytes(ID_VIT, &vinit);
+        CANenvoiMsg1x8Bytes(ID_VIT, &vinit);
         CANenvoiMsg1x8Bytes(ID_VIT1, &consigne_vit);
         CANenvoiMsg1x8Bytes(ID_POS, &consigne_posv);
-        CANenvoiMsg1x8Bytes(ID_POS1, &consigne_posl);*/
+        CANenvoiMsg1x8Bytes(ID_POS1, &consigne_posl);
     }
     
     #endif
@@ -1655,9 +1634,9 @@ void Rayon_De_Courbure_Clotho(struct Ordre_deplacement monDpl)//fait
                 etat_automate_depl = VITESSE_CONSTANTE_TRAPEZE;      //Passage a l'etat VITESSE_CONSTANTE
                 cpt = 0;
                 
-                //CANenvoiMsg1x8Bytes(ID_ENTRAXE, &vinit); A FAIRE!!-----------------------------------------------------------------
+                CANenvoiMsg1x8Bytes(ID_ENTRAXE, &vinit); 
                 
-                //CANenvoiMsg1x8Bytes(ID_RAYON, &consigne_vit);A FAIRE!!-------------------------------------------------------------
+                CANenvoiMsg1x8Bytes(ID_RAYON, &consigne_vit);
                 
                 //consigne_vit = vmax;
             }
@@ -1858,7 +1837,7 @@ void X_Y_Theta(long px, long py, long ptheta, long sens, short vmax, short amax)
 
                 remplirStruct(INSTRUCTION_END_MOTEUR, 2, 0x30, 0x00,0,0,0,0,0,0);
                 writeStructInCAN(DATArobot);
-                //CANenvoiMsg2x1Byte(INSTRUCTION_END_MOTEUR, 0x30, 0);
+                ////CANenvoiMsg2x1Byte(INSTRUCTION_END_MOTEUR, 0x30, 0);
                 
                 etat_automate_xytheta = LIGNE_DROITE_X_Y_THETA; //Passage a l'etat LIGNE_DROITE_X_Y_THETA
             }
@@ -1876,7 +1855,7 @@ void X_Y_Theta(long px, long py, long ptheta, long sens, short vmax, short amax)
                 finMvtElem = 0;
                 remplirStruct(INSTRUCTION_END_MOTEUR, 2, 0x40, 0x00,0,0,0,0,0,0);
                 writeStructInCAN(DATArobot);
-                //CANenvoiMsg2x1Byte(INSTRUCTION_END_MOTEUR, 0x40, 0);
+                ////CANenvoiMsg2x1Byte(INSTRUCTION_END_MOTEUR, 0x40, 0);
                 
                 etat_automate_xytheta = ROTATION_X_Y_THETA_2;   //Passage a l'etat ROTATION_X_Y_THETA_2
             }
@@ -2260,42 +2239,130 @@ void Moteur_Init(){
 
 //----------------------------------------------------------------------fonctions CAN et BLE
 
-void BLEloop(){
+void CANloop(){
   if(canAvailable){
     canAvailable = false;
-    
     Serial.println("CAN received");
     canReadExtRtr();//On le me ici pour ne pas surcharger l'interruption CAN.onRecveive
-    // Send message to master via bleutooth
-    if (connected)
+
+    switch (DATAtoControl.ID)
     {
-      prxRemoteCharacteristic->writeValue((uint8_t *)&DATAtoSend, sizeof(DATAtoSend));
+    case ASSERVISSEMENT_REQUETE_PID:
+                Serial.println("ASSERVISSEMENT_REQUETE_PID");
+                CANenvoiMsg1x8Bytes(ASSERVISSEMENT_CONFIG_KPP, &KppD);
+                CANenvoiMsg1x8Bytes(ASSERVISSEMENT_CONFIG_KPI, &KipD);
+                CANenvoiMsg1x8Bytes(ASSERVISSEMENT_CONFIG_KPD, &KdpD);
+                break;
+            
+            case ASSERVISSEMENT_CONFIG_KPP_DROITE:
+                memcpy(&KppD, DATAtoControl.dt, 8);
+                KppDa = KppD;
+                Serial.println("ASSERVISSEMENT_CONFIG_KPP_DROITE");
+                break;
+            case ASSERVISSEMENT_CONFIG_KPI_DROITE:
+                memcpy(&KipD, DATAtoControl.dt, 8);
+                KipDa = KipD;
+                Serial.println("ASSERVISSEMENT_CONFIG_KPI_DROITE");
+                break;
+            case ASSERVISSEMENT_CONFIG_KPD_DROITE:
+                memcpy(&KdpD, DATAtoControl.dt, 8);
+                KdpDa = KdpD;
+                Serial.println("ASSERVISSEMENT_CONFIG_KPD_DROITE");
+                break;
+                
+            case ASSERVISSEMENT_CONFIG_KPP_GAUCHE:
+                memcpy(&KppG, DATAtoControl.dt, 8);
+                KppGa = KppG;
+                Serial.println("ASSERVISSEMENT_CONFIG_KPP_GAUCHE");
+                break;
+            case ASSERVISSEMENT_CONFIG_KPI_GAUCHE :
+                memcpy(&KipG, DATAtoControl.dt, 8);
+                KipGa = KipG;
+                Serial.println("ASSERVISSEMENT_CONFIG_KPI_GAUCHE");
+                break;
+            case ASSERVISSEMENT_CONFIG_KPD_GAUCHE :
+                memcpy(&KdpG, DATAtoControl.dt, 8);
+                KdpGa = KdpG;
+                Serial.println("ASSERVISSEMENT_CONFIG_KPD_GAUCHE");
+                break;
+                
+            case ASSERVISSEMENT_CONFIG_KPP:
+                memcpy(&KppG, DATAtoControl.dt, 8);
+                KppGa = KppG;
+                KppD = KppG;
+                KppDa = KppD;
+                Serial.println("ASSERVISSEMENT_CONFIG_KPP");
+                break;
+            case ASSERVISSEMENT_CONFIG_KPI :
+                memcpy(&KipG, DATAtoControl.dt, 8);
+                KipGa = KipG;
+                KipD = KipG;
+                KipDa = KipD;
+                Serial.println("ASSERVISSEMENT_CONFIG_KPI");
+                break;
+            case ASSERVISSEMENT_CONFIG_KPD :
+                memcpy(&KdpG, DATAtoControl.dt, 8);
+                KdpGa = KdpG;
+                KdpD = KdpG;
+                KdpDa = KdpD; 
+                Serial.println("ASSERVISSEMENT_CONFIG_KPD");
+                break;
+            
+            case ECRAN_CHOICE_COLOR :
+                Serial.println("ECRAN_CHOICE_COLOR");
+                break;
+                
+            case ASSERVISSEMENT_ENABLE :
+                asser_actif = DATAtoControl.dt[0];
+                if(asser_actif == 1)
+                {
+                    roue_drt_init = lireCodeurD();
+                    roue_gch_init = lireCodeurG();
+                }
+                Serial.println("ASSERVISSEMENT_ENABLE");
+            break;
+                
+            case ASSERVISSEMENT_DECEL :
+                {
+                    double k = TE/0.02;
+                    VMAX = ((double)DATAtoControl.dt[0]+256*DATAtoControl.dt[1])*k;
+                    DMAX = ((double)DATAtoControl.dt[2]+256*DATAtoControl.dt[3])*k*k;
+                    ralentare = 1;
+                    
+                    remplirStruct(ACKNOWLEDGE_MOTEUR, 2, 0x19, 0,0,0,0,0,0,0);
+                    writeStructInCAN(DATArobot);
+                    //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x19, 0);
+                }
+                Serial.println("ASSERVISSEMENT_DECEL");
+            break;
+                
+            default :
+            
+            break;
+    }
+
+    // Send message to master via bleutooth
+    /*if (connected){
+      prxRemoteCharacteristic->writeValue((uint8_t *)&DATAtoControl, sizeof(DATAtoControl));
       Serial.println("Sending via BT...");
-    }
-    else{
-      Serial.println("The device is not connected");
-      
-    }
+    } else{Serial.println("The device is not connected");}*/
   }
 
   // If the flag "doConnect" is true then we have scanned for and found the desired
   // BLE Server with which we wish to connect.  Now we connect to it.  Once we are
   // connected we set the connected flag to be true.
-  if (doConnect == true) {
+  /*if (doConnect == true) {
     if (connectToServer(*pServerAddress)) {
       Serial.println("We are now connected to the BLE Server.");
       //Activate the Notify property of each Characteristic
       ptxRemoteCharacteristic->getDescriptor(BLEUUID((uint16_t)0x2902))->writeValue((uint8_t*)notificationOn, 2, true);
-      
-    } else {
-      Serial.println("We have failed to connect to the server; Restart your device to scan for nearby BLE server again.");
-    }
+    } else {Serial.println("We have failed to connect to the server; Restart your device to scan for nearby BLE server again.");}
     doConnect = false;
-  }
-  //if new CAN readings are available, write it in CAN bus
+  }*/
+  //if new CAN by BT are available, write it in CAN bus / CAN <-> Bt <-> CAN
   if (newCan){
     newCan = false;
-    readDATA();
+    readDATA(); //interprete les donnees par Bt
     writeStructInCAN(myData); 
   }
   
@@ -2311,7 +2378,7 @@ void setupCAN(){
     Serial.println("Starting CAN failed!");
     while (1);
   }
-  CAN.onReceive(canReadData);
+  CAN.onReceive(canReadData); //init CAN callback function
 }
 
 void writeStructInCAN(const CANMessage &theDATA){
@@ -2335,13 +2402,13 @@ void writeStructInCAN(const CANMessage &theDATA){
 
 void canReadData(int packetSize){
   
-  DATAtoSend.ID = CAN.packetId();
-  DATAtoSend.ln = CAN.packetDlc();
-  // only print packet data for non-RTR packets
+  DATAtoControl.ID = CAN.packetId();
+  DATAtoControl.ln = CAN.packetDlc();
+  // only print packet DATAtoControl.dt for non-RTR packets
   int i = 0;
   while (CAN.available())
   {
-    DATAtoSend.dt[i]=CAN.read();
+    DATAtoControl.dt[i]=CAN.read();
     i++;
   }
   canAvailable = true;
@@ -2350,14 +2417,70 @@ void canReadData(int packetSize){
 void canReadExtRtr(){
   if (CAN.packetExtended()){
       Serial.print("extended ");
-      DATAtoSend.extented = true;
-  }else{DATAtoSend.extented = false;}
+      DATAtoControl.extented = true;
+  }else{DATAtoControl.extented = false;}
   if (CAN.packetRtr()){
-      // Remote transmission request, packet contains no data
+      // Remote transmission request, packet contains no DATAtoControl.dt
       Serial.print("RTR ");
-      DATAtoSend.RTR = true;
+      DATAtoControl.RTR = true;
   }
-  else{DATAtoSend.RTR = false;}
+  else{DATAtoControl.RTR = false;}
+}
+
+void readDATA(){
+  //char contenuBt[sizeof(myData)]; // taille de la structure envoyée
+
+  myData.extented = contenuBt[0];
+  myData.RTR = contenuBt[1];
+  myData.ID = contenuBt[4] + (contenuBt[5]<<8) + (contenuBt[6]<<16) + (contenuBt[7]<<24);
+  myData.ln = contenuBt[8];
+  int i;
+  for(i=0;i<8;i++)
+  {
+    myData.dt[i]=contenuBt[i+9];
+  }
+}
+
+void remplirStruct(int idf, char lenf, char dt0f, char dt1f, char dt2f, char dt3f, char dt4f, char dt5f, char dt6f, char dt7f){
+  DATArobot.RTR = false;
+  if(idf>0x7FF){DATArobot.extented = true;}
+  else{DATArobot.extented = false;}
+
+  DATArobot.ID = idf;
+  DATArobot.ln = idf;
+  DATArobot.dt[0] = dt0f;
+  DATArobot.dt[1] = dt1f;
+  DATArobot.dt[2] = dt2f;
+  DATArobot.dt[3] = dt3f;
+  DATArobot.dt[4] = dt4f;
+  DATArobot.dt[5] = dt5f;
+  DATArobot.dt[6] = dt6f;
+  DATArobot.dt[7] = dt7f;
+}
+
+void CANenvoiMsg1x8Bytes(uint32_t id, void *pdata)
+{
+    DATArobot.RTR = false;
+    if(id>0x7FF){DATArobot.extented = true;}
+    else{DATArobot.extented = false;}
+
+    DATArobot.ID = id;
+    DATArobot.ln = 8;
+    memcpy(&DATArobot.dt, pdata, 8);
+    writeStructInCAN(DATArobot);          
+}
+
+void CANenvoiMsg2x4Bytes(uint32_t id, void *pdata1, void *pdata2)
+{
+    DATArobot.RTR = false;
+    if(id>0x7FF){DATArobot.extented = true;}
+    else{DATArobot.extented = false;}
+
+    DATArobot.ID = id;
+    DATArobot.ln = 8;
+    memcpy(&DATArobot.dt, pdata1, 4);
+    memcpy(&(DATArobot.dt[4]), pdata2, 4);
+    writeStructInCAN(DATArobot);     
 }
 
 void slaveBTConnect(std::string name){
@@ -2403,37 +2526,6 @@ bool connectToServer(BLEAddress pAddress) {
   connected = true;
   return true;
 }
-
-void readDATA(){
-  //char contenuBt[sizeof(myData)]; // taille de la structure envoyée
-
-  myData.extented = contenuBt[0];
-  myData.RTR = contenuBt[1];
-  myData.ID = contenuBt[4] + (contenuBt[5]<<8) + (contenuBt[6]<<16) + (contenuBt[7]<<24);
-  myData.ln = contenuBt[8];
-  int i;
-  for(i=0;i<8;i++)
-  {
-    myData.dt[i]=contenuBt[i+9];
-  }
-}
-
-void remplirStruct(int idf, char lenf, char dt0f, char dt1f, char dt2f, char dt3f, char dt4f, char dt5f, char dt6f, char dt7f){
-  DATArobot.RTR = false;
-  DATArobot.extented = false;
-
-  DATArobot.ID = idf;
-  DATArobot.ln = idf;
-  DATArobot.dt[0] = dt0f;
-  DATArobot.dt[1] = dt1f;
-  DATArobot.dt[2] = dt2f;
-  DATArobot.dt[3] = dt3f;
-  DATArobot.dt[4] = dt4f;
-  DATArobot.dt[5] = dt5f;
-  DATArobot.dt[6] = dt6f;
-  DATArobot.dt[7] = dt7f;
-}
-
 
 //----------------------------------------------------------------------autres fonctions
 

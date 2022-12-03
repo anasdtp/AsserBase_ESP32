@@ -354,7 +354,7 @@ void write_PWMG(int vit)
 
 void Arret_Brutal(void)
 {
-        Moteur_D_INA_Write(1);      
+        Moteur_D_INA_Write(1);     
         Moteur_D_INB_Write(1);
         Moteur_G_INA_Write(1);      
         Moteur_G_INB_Write(1);
