@@ -72,16 +72,21 @@ int ESP32SJA1000Class::begin(long baudRate)
 
   switch (baudRate) {
     case (long)1000E3:
-      modifyRegister(REG_BTR1, 0x0f, 0x06);
-      modifyRegister(REG_BTR0, 0x3f, 1);
+      modifyRegister(REG_BTR1, 0x0f, 0x04);
+      modifyRegister(REG_BTR0, 0x3f, 4);
       break;
 
     case (long)500E3:
       modifyRegister(REG_BTR1, 0x0f, 0x0c);
-      modifyRegister(REG_BTR0, 0x3f, 9);
+      modifyRegister(REG_BTR0, 0x3f, 4);
       break;
 
     case (long)250E3:
+      modifyRegister(REG_BTR1, 0x0f, 0x0c);
+      modifyRegister(REG_BTR0, 0x3f, 9);
+      break;
+
+    case (long)200E3:
       modifyRegister(REG_BTR1, 0x0f, 0x0c);
       modifyRegister(REG_BTR0, 0x3f, 12);
       break;

@@ -130,6 +130,7 @@
  C:/Users/Crac/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/spi_flash/include/esp_spi_flash_counters.h \
  C:/Users/Crac/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/esp_hw_support/include/soc/esp32/spiram.h \
  .pio/libdeps/esp32dev/AsserBas/src/ident_crac.h \
+ .pio/libdeps/esp32dev/AsserBas/src/buffer_circulaire.h \
  .pio/libdeps/esp32dev/ESP32Encoder/src/ESP32Encoder.h \
  C:/Users/Crac/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/driver/include/driver/pcnt.h \
  C:/Users/Crac/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/hal/include/hal/pcnt_types.h

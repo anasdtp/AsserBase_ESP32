@@ -43,10 +43,8 @@ bool canAvailable = false;
 typedef struct CANMessage {
   bool extented = false;
   bool RTR = false;
-  unsigned int ID;
-  char ln;
-  unsigned char dt[8];
-
-  char BLEID = 0x42;//Nom du device BLE 0x41=A, 0x42=B
+  unsigned int ID = 0;
+  char ln = 0;
+  unsigned char dt[8] = {0};
 } CANMessage;
 

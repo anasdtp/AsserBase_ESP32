@@ -1,0 +1,633 @@
+//----------------------------------------------------------------------Bibliotheques
+#include <Arduino.h>
+
+#include "CRAC_utility.h"
+#include "clotho.h"
+#include "buffer_circulaire.h"
+
+#include <CAN.h>
+#include <BLEDevice.h>
+#include <BLEServer.h>
+#include <BLEUtils.h>
+#include <BLE2902.h>
+#include <Wire.h>
+//----------------------------------------------------------------------Variables
+
+
+
+#define bleServerName "ESP32EB"
+#define peerName "ESP32EA";
+//SLAVE-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_
+
+
+/* UUID's of the service, characteristic that we want to read*/
+// BLE Service
+static BLEUUID serviceUUID("6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
+static BLEUUID      rxUUID("6E400002-B5A3-F393-E0A9-E50E24DCCA9E");
+static BLEUUID      txUUID("6E400003-B5A3-F393-E0A9-E50E24DCCA9E");
+//-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_SLAVE
+
+//Address of the peripheral device. Address will be found during scanning...
+static BLEAddress *pServerAddress;
+
+static boolean doConnect = false;
+static boolean connected = false;
+static boolean doScan = false;
+static BLERemoteCharacteristic* prxRemoteCharacteristic;//Characteristicd that we want to read
+static BLERemoteCharacteristic* ptxRemoteCharacteristic;
+static BLEAdvertisedDevice* myDevice;
+//Activate notify
+const uint8_t notificationOn[] = {0x1, 0x0};
+const uint8_t notificationOff[] = {0x0, 0x0};
+
+char* contenuBT;
+//Flags to check whether new CAN and humidity readings are available
+boolean newCAN = false;
+
+typedef struct CANMessage {
+  bool extented = false;
+  bool RTR = false;
+  unsigned int ID;
+  char ln;
+  unsigned char dt[8];
+
+  char BLEID = 0x42;//Nom du device BLE 0x41=A, 0x42=B
+} CANMessage;
+CANMessage myData;
+CANMessage DATAtoSend;
+
+bool CANavailable = false;
+
+/****************************************************************************************/
+/*                           Definition et affectation des variables                   */
+/*            Par souci de simplicité, on utilise beaucoup de variables globales        */
+/****************************************************************************************/
+double          consigne_pos, consigne_vit,                 // Consignes de position et de vitesse dans les mouvements
+                VMAX, AMAX, AMAX_CLO, DMAX,                 // Valeurs maximales d'accéleration, décélération et vitesse
+                Odo_x, Odo_y, Odo_theta, Odo_val_pos_D, Odo_val_pos_G, Odo_last_val_pos_D, Odo_last_val_pos_G,  // Variables de positions utilisées pour l'odométrie
+                roue_drt_init, roue_gch_init,               // Valeur des compteurs (!= 0) quand on commence un nouveau mouvement
+                global_ta_stop=0,global_decel_stop=0,
+                old_posD=0,old_posG=0;
+// Tout plein de flags
+short           etat_automate = 0, etat_automate_depl = 0, new_message = 0,
+                xytheta_sens, next_move_xyt = 0, next_move = 0, i, stop = 0, stop_receive = 0, param_xytheta[3],
+                etat_automate_xytheta = 0, ralentare = 0;
+                
+unsigned short cpt = 0,cpt_arret=0;
+
+int cpt_ordre = 0;
+                
+char vitesse_danger = 0, Stop_Danger = 0, asser_actif = 1, attente = 0, mode_xyt = 0,
+                finMvtElem = 0, finRecalage = 0, finRayonCourbure = 0,finRayonCourbureClo = 0, finXYT = 0,  Fin_Match = 0, Message_Fin_Mouvement = 0, explosionErreur = 0; 
+int nb_ordres = 0;
+                
+volatile uint16_t          ms_count = 0,      // Compteur utilisé pour envoyer échantillonner les positions et faire l'asservissement
+                         ms_count1 = 0,     // Compteur utilisé pour envoyer échantillonner les positions et faire l'asservissement
+                         ms_count2 = 0;     // Compteur utilisé pour envoyer la trame CAN d'odométrie
+
+double consigne_posG = 0, consigne_posD = 0;
+float distanceG = 0, distanceD = 0;
+char flagDebutBezier = 0;
+int nbValeurs = 0;
+
+const uint16_t           INITIALISATION = 0xe0, ACCELERATION_TRAPEZE = 0xe1, ACCELERATION_TRIANGLE = 0xe2,
+                VITESSE_CONSTANTE_TRAPEZE=0xe3, DECELERATION_TRAPEZE = 0xe4, ARRET = 0xe5, ACCELERATION_TRIANGLE = 0xe6, DECELERATION_TRIANGLE = 0xe7,
+                TROP_D_ERREUR_ASSERV = 0xe8, ARRET_STOP = 0xe9;
+/****************************************************************************************/
+//Sinon, détails : les angles sont exprimés en dixièmes de degrés quand il faut faire des calculs, ou quand ils faut les transmettre en CAN
+//les distances, pareil, c'est de millimètres
+//Par contre, pour les fonctions Ligne_droite, Rotation, et asser_pos c'est exprimé en ticks d'encodeur
+/****************************************************************************************/
+                             
+
+/****************************************************************************************/
+/*                               Deplacement a effectuer                                */
+/*                Liste des ordres de déplacement à effectuer à la suite                */
+/*                    (PAS IMPLEMENTE, OU ALORS CA MARCHE TRES MAL)                     */
+/****************************************************************************************/ 
+struct Ordre_deplacement liste[200];
+//clothoStruc maClotho;
+
+
+
+/***************************************************************************************
+ NOM : CY_ISR                                                                         
+ TYPE : interruption      100us                                                            
+
+CY_ISR(MY_ISR)
+{
+    ms_count++;
+}
+***************************************************************************************/
+
+/***************************************************************************************
+                   Prototypes des fonctions de ce fichier (dans l'ordre)                    
+***************************************************************************************/
+//void calcul(void);
+void Mouvement_Elementaire(long pcons, short vmax, short amax, short dmax, char mvt);
+/*void Rayon_De_Courbure(short rayon, short theta, short vmax, short amax, short sens, short dmax);
+void trait_Mouvement_Elementaire_Gene(struct Ordre_deplacement* monDpl);
+void trait_Rayon_De_Courbure_Clotho(struct Ordre_deplacement* monDpl);
+void Mouvement_Elementaire_Gene(struct Ordre_deplacement monDpl);
+void Rayon_De_Courbure_Clotho(struct Ordre_deplacement monDpl);
+void X_Y_Theta(long px, long py, long ptheta, long sens, short vmax, short amax);
+void Recalage(int pcons, short vmax, short amax, short dir, short nv_val);
+int Courbe_bezier(double distanceG, double distanceD);
+void Arret(void);
+void Odometrie(void);*/
+
+//----------------------------------------------------------------------prototypes fonctions BLE et CAN
+void setupCAN();
+void writeStructInCAN(const CANMessage &theDATA);
+void canReadData(int packetSize);
+void canReadExtRtr();
+void BLEloop();
+void slaveBTConnect(std::string name);
+bool connectToServer(BLEAddress pAddress);
+void readDATA();
+//----------------------------------------------------------------------callback fonctions
+static void notifyCallback(
+  BLERemoteCharacteristic* pBLERemoteCharacteristic,
+  uint8_t* pData,
+  size_t length,
+  bool isNotify) {
+    Serial.print("Notify callback for characteristic ");
+    Serial.print(pBLERemoteCharacteristic->getUUID().toString().c_str());
+    Serial.print(" of data length ");
+    Serial.println(length);
+    Serial.print("data: ");
+    Serial.println((char*)pData);
+}
+
+class MyClientCallback : public BLEClientCallbacks {
+  void onConnect(BLEClient* pclient) {
+  }
+
+  void onDisconnect(BLEClient* pclient) {
+    connected = false;
+    Serial.println("onDisconnect");
+  }
+};
+
+//Callback function that gets called, when another device's advertisement has been received
+class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
+  void onResult(BLEAdvertisedDevice advertisedDevice) {
+    if (advertisedDevice.getName() == bleServerName) { //Check if the name of the advertiser matches
+      advertisedDevice.getScan()->stop(); //Scan can be stopped, we found what we are looking for
+      pServerAddress = new BLEAddress(advertisedDevice.getAddress()); //Address of advertiser is the one we need
+      doConnect = true; //Set indicator, stating that we are ready to connect
+      Serial.println("Device found. Connecting!");
+    }
+  }
+};
+
+
+static void CANNotifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristic, uint8_t* pData, size_t length, bool isNotify) {
+  //store can value
+  contenuBT = (char*)pData;
+  newCAN = true;
+}
+//----------------------------------------------------------------------SETUP
+void setup() {
+  Serial.begin(921600);
+  setupCAN();
+  //Init BLE device
+  slaveBTConnect("ESP32EA");
+
+
+
+}
+//----------------------------------------------------------------------loop
+void loop() {
+  BLEloop();
+}
+//----------------------------------------------------------------------fonctions
+
+/***************************************************************************************
+ NOM : Mouvement Elementaire                                                           
+ ARGUMENT : long pcons -> distance a parcourir (>0 : avancer et <0 : reculer          
+            short vmax -> vitesse maximale                                            
+            short amax -> acceleration maximale                                       
+            short dmax -> deceleration maximale                                      
+            char mvt -> choix entre rotation et ligne droite                          
+ RETOUR : rien                                                                        
+ DESCRIPTIF : Fonction appelee pour effectuer une ligne droite                        
+***************************************************************************************/
+void Mouvement_Elementaire(long pcons, short vmax, short amax, short dmax, char mvt)
+{    
+    //Declaration des variables
+    static double tc, ta, td;   //tc temps à vitesse constante, ta en acceleration, td en deceleration
+    static double vmax_tri=1;     //Vitesse maximale atteinte dans le cas d'un profil en triangle
+    static double accel = 1, decel = 1;
+    double pos_triangle;    //Position triangle avec vitesse max
+    static short memo_etat_automate = 0;
+    static short defaut_asserv = 0;
+    
+    switch(etat_automate_depl)      //Automate de gestion du deplacement
+    {
+     case INITIALISATION :      //Etat d'initialisation et de calcul des variables
+        //Remise a zero des variables car on effectue un nouveau deplacement
+        consigne_pos = 0;
+        consigne_vit = 0;
+        cpt = 0;
+        defaut_asserv = 0;
+        
+        accel = amax * 0.001;
+        decel = dmax * 0.001;
+        //Elaboration du profil de vitesse
+        ta = vmax / accel;      //Calcul du temps d'acceleration
+        td = vmax / decel;      //Calcul du temps de deceleration
+        global_ta_stop=ta;
+        global_decel_stop=5*decel;
+        pos_triangle = (0.5 * vmax) * (ta + td);
+        
+        long posCalc;
+        if (pos_triangle < fabs((double)pcons)){
+            //Profil trapeze
+            tc = (fabs((double)pcons) - pos_triangle) / (double)vmax;
+            etat_automate_depl = ACCELERATION_TRAPEZE;
+            posCalc = ta*vmax/2+ td*vmax/2 + tc*vmax;
+        }
+        
+        else{
+            //Profil triangle
+            vmax_tri = sqrt(2.0 * fabs((double)pcons) / (1.0/accel+1.0/decel));
+            ta = vmax_tri / accel;      //Calcul du temps d'acceleration
+            td = vmax_tri / decel;      //Calcul du temps de deceleration
+            global_ta_stop = ta;
+            global_decel_stop=5*decel;
+            etat_automate_depl = ACCELERATION_TRIANGLE;
+            posCalc = ta*vmax_tri/2 + td*vmax_tri/2;
+        }
+
+        CANenvoiMsg2x4Bytes(ID_DIST_TIC_GENE, &pcons, &posCalc);
+        
+        #if F_DBUG_LIGNE
+        CANenvoiMsg4x2Bytes(ID_DBUG_LIGNE_TPS, etat_automate_depl, ta, td, tc);
+                
+        CANenvoiMsg4Bytes(ID_DBUG_LIGNE_PCONS, &pcons);
+                        
+        CANenvoiMsg3x2Bytes(ID_DBUG_LIGNE_VIT, vmax, amax, dmax);
+        #endif
+        
+        break;
+        
+     case ACCELERATION_TRAPEZE :    //Etat d'acceleration en profil trapeze
+        cpt ++;
+        
+        //Incrementation de la consigne de vitesse par la valeur de l'acceleration
+        consigne_vit += accel;          
+        
+        //Incrementation de la consigne de position
+        if (pcons>0) {
+            consigne_pos += consigne_vit;
+        } else {
+            consigne_pos -= consigne_vit;
+        }
+        
+        if(cpt >= ta)   //Condition pour quitter la phase d'acceleration
+        {
+            etat_automate_depl = VITESSE_CONSTANTE_TRAPEZE;      //Passage a l'etat VITESSE_CONSTANTE
+            cpt = 0;
+            consigne_vit = vmax;
+        }
+/*        if(stop_receive)
+            etat_automate_depl=ARRET_STOP;
+*/        break;
+        
+     case VITESSE_CONSTANTE_TRAPEZE :   //Etat de vitesse constante en profil trapeze
+        cpt ++; 
+        //Incrementation de la consigne de position
+        if (pcons>0) {
+            consigne_pos += consigne_vit;
+        } else {
+            consigne_pos -= consigne_vit;
+        }
+        
+        //Si il n'y a pas d'enchainements
+        if(cpt >= tc)     //Condition pour quitter la phase de vitesse constante
+        {
+            etat_automate_depl = DECELERATION_TRAPEZE;      //Passage a l'etat DECELERATION
+            cpt = 0;
+        }
+/*        if(stop_receive)
+            etat_automate_depl=ARRET_STOP;
+*/
+        break;
+        
+     case DECELERATION_TRAPEZE :    //Etat de deceleration en profil trapeze
+        cpt ++;
+         
+        //Incrementation de la consigne de vitesse par la valeur de l'acceleration
+        consigne_vit -= decel;          
+        
+        //Incrementation de la consigne de position
+        if (pcons>0) 
+        {
+            consigne_pos += consigne_vit;
+        } 
+        else 
+        {
+            consigne_pos -= consigne_vit;
+        }
+        
+        if(cpt >= td)       //Condition pour quitter la phase de deceleration en profil trapeze
+        {
+            etat_automate_depl = ARRET;     //Passage a l'etat ARRET
+            consigne_pos = pcons;
+            consigne_vit = 0;
+            cpt = 0;
+        }
+/*        if(stop_receive)
+            etat_automate_depl=ARRET_STOP;
+*/        break;
+        
+     case ARRET :       //Etat d'arret
+        cpt ++;
+        
+        if(cpt >= 20)       //Condition pour sortir de l'etat arret
+        {
+            finMvtElem = 1;
+            etat_automate_depl = INITIALISATION;        //Passage a l'etat INITIALISATION
+        }
+        break;
+        
+    case ACCELERATION_TRIANGLE :        //Etat d'acceleration en profil triangle
+        cpt ++;
+        
+        //Incrementation de la consigne de vitesse par la valeur de l'acceleration
+        consigne_vit += accel;          
+        
+        //Incrementation de la consigne de position
+        if (pcons>0) {
+            consigne_pos += consigne_vit;
+        } else {
+            consigne_pos -= consigne_vit;
+        }
+        
+        if(cpt >= ta)   //Condition pour quitter la phase d'acceleration
+        {
+            etat_automate_depl = DECELERATION_TRIANGLE;      //Passage a l'etat VITESSE_CONSTANTE
+            cpt = 0;
+            consigne_vit = vmax_tri;
+        }
+/*        if(stop_receive)
+            etat_automate_depl=ARRET_STOP;
+*/        break;
+        
+    case DECELERATION_TRIANGLE :        //Etat de deceleration en profil triangle
+        cpt ++;
+         
+        //Incrementation de la consigne de vitesse par la valeur de l'acceleration
+        consigne_vit -= decel;          
+        
+        //Incrementation de la consigne de position
+        if (pcons>0) {
+            consigne_pos += consigne_vit;
+        } else {
+            consigne_pos -= consigne_vit;
+        }
+        
+        if(cpt >= td)       //Condition pour quitter la phase de deceleration en profil trapeze
+        {
+            etat_automate_depl = ARRET;     //Passage a l'etat ARRET
+            consigne_pos = pcons;
+            consigne_vit = 0;
+            cpt = 0;
+        }
+/*        if(stop_receive)
+            etat_automate_depl=ARRET_STOP;
+*/        break;
+        
+    /*case TROP_D_ERREUR_ASSERV :
+        etat_automate_depl = memo_etat_automate;
+        defaut_asserv++;
+        break;*/
+/*    case ARRET_STOP:
+        while(1)
+            Arret_Brutal();
+        if((old_posD==lireCodeurD())&&(old_posG==lireCodeurG()))
+        {
+            cpt_arret++;
+            if(cpt_arret>100)
+                etat_automate_depl = INITIALISATION;
+                
+        }
+        else
+        {
+            cpt_arret=0;
+            old_posD=lireCodeurD();
+            old_posG=lireCodeurG();
+        }
+        break;
+*/        
+    default:
+    break;
+    }
+    
+    if((etat_automate_depl != INITIALISATION)&&(etat_automate_depl != ARRET_STOP))
+    {
+        //Calcul des commandes
+        double cmdD, cmdG, erreur;
+        
+        if (mvt == MOUVEMENT_LIGNE_DROITE){
+            /*cmdD = Asser_Pos_MotD(roue_drt_init + consigne_pos);
+            cmdG = Asser_Pos_MotG(roue_gch_init + consigne_pos);*/
+            Asser_Pos_Mot(roue_gch_init + consigne_pos, roue_drt_init + consigne_pos, &cmdG, &cmdD);
+            erreur = ErreurPosG;
+        }else{
+            cmdD = Asser_Pos_MotD(roue_drt_init + consigne_pos);
+            cmdG = Asser_Pos_MotG(roue_gch_init - consigne_pos);
+            erreur = -ErreurPosG;
+        }
+        
+        /*if (fabs(ErreurPosD + erreur) > EXPLOSION_TAUX) {
+            // Trop d'écart
+            memo_etat_automate = etat_automate_depl;
+            if (defaut_asserv<3) {
+                etat_automate_depl = TROP_D_ERREUR_ASSERV;
+                //defaut_asserv++;
+            } else {
+                defaut_asserv = 0;
+                asser_actif = 0;
+                liste[cpt_ordre].type = TYPE_ASSERVISSEMENT_DESACTIVE;//msg defaut???
+            }
+        }*/
+        //Ecriture du PWM sur chaque modeur
+        write_PWMG(cmdG);   
+        write_PWMD(cmdD);
+        
+        //Arret si le robot est bloqué
+        lectureErreur();
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+//----------------------------------------------------------------------fonctions CAN et BLE
+
+void BLEloop(){
+  if(CANavailable){
+    CANavailable = false;
+    Serial.println("CAN received");
+    canReadExtRtr();//On le me ici pour ne pas surcharger l'interruption CAN.onRecveive
+    // Send message to master via bleutooth
+    if (connected)
+    {
+      prxRemoteCharacteristic->writeValue((uint8_t *)&DATAtoSend, sizeof(DATAtoSend));
+      Serial.println("Sending via BT...");
+    }
+    else{
+      Serial.println("The device is not connected");
+      
+    }
+  }
+
+  // If the flag "doConnect" is true then we have scanned for and found the desired
+  // BLE Server with which we wish to connect.  Now we connect to it.  Once we are
+  // connected we set the connected flag to be true.
+  if (doConnect == true) {
+    if (connectToServer(*pServerAddress)) {
+      Serial.println("We are now connected to the BLE Server.");
+      //Activate the Notify property of each Characteristic
+      ptxRemoteCharacteristic->getDescriptor(BLEUUID((uint16_t)0x2902))->writeValue((uint8_t*)notificationOn, 2, true);
+      
+    } else {
+      Serial.println("We have failed to connect to the server; Restart your device to scan for nearby BLE server again.");
+    }
+    doConnect = false;
+  }
+  //if new CAN readings are available, write it in CAN bus
+  if (newCAN){
+    newCAN = false;
+    readDATA();
+    writeStructInCAN(myData); 
+  }
+  
+}
+
+void setupCAN(){
+  while (!Serial);
+
+  Serial.println("CAN Receiver ESP32-E-B");
+
+  // start the CAN bus at 1000 kbps
+  if (!CAN.begin(1000E3)) { //ici, nous avons modifié la bibliotheque CAN pour qu'elle soit compatible avec l'ESP32-E
+    Serial.println("Starting CAN failed!");
+    while (1);
+  }
+  CAN.onReceive(canReadData);
+}
+
+void writeStructInCAN(const CANMessage &theDATA){
+  Serial.print("Sending ");
+
+  if(theDATA.extented){
+    CAN.beginExtendedPacket(theDATA.ID, theDATA.ln, theDATA.RTR);
+    Serial.print("extended ");
+  }
+  else{CAN.beginPacket(theDATA.ID, theDATA.ln, theDATA.RTR);}
+
+  Serial.print("packet on CAN... ");
+
+  if(!theDATA.RTR){CAN.write(theDATA.dt, theDATA.ln);}
+  
+  CAN.endPacket();
+
+  Serial.println("done");
+  Serial.println();
+}
+
+void canReadData(int packetSize){
+  
+  DATAtoSend.ID = CAN.packetId();
+  DATAtoSend.ln = CAN.packetDlc();
+  // only print packet data for non-RTR packets
+  int i = 0;
+  while (CAN.available())
+  {
+    DATAtoSend.dt[i]=CAN.read();
+    i++;
+  }
+  CANavailable = true;
+}
+
+void canReadExtRtr(){
+  if (CAN.packetExtended()){
+      Serial.print("extended ");
+      DATAtoSend.extented = true;
+  }else{DATAtoSend.extented = false;}
+  if (CAN.packetRtr()){
+      // Remote transmission request, packet contains no data
+      Serial.print("RTR ");
+      DATAtoSend.RTR = true;
+  }
+  else{DATAtoSend.RTR = false;}
+}
+void slaveBTConnect(std::string name){
+  // Create the BLE Device
+  BLEDevice::init(name);
+  BLEDevice::setEncryptionLevel(ESP_BLE_SEC_ENCRYPT);
+  // Retrieve a Scanner and set the callback we want to use to be informed when we
+  // have detected a new device.  Specify that we want active scanning and start the
+  // scan to run for 30 seconds.
+  BLEScan* pBLEScan = BLEDevice::getScan();
+  pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
+  pBLEScan->setActiveScan(true);
+  pBLEScan->start(5, false);
+}
+
+void readDATA(){
+  //char contenuBT[sizeof(myData)]; // taille de la structure envoyée
+
+  myData.extented = contenuBT[0];
+  myData.RTR = contenuBT[1];
+  myData.ID = contenuBT[4] + (contenuBT[5]<<8) + (contenuBT[6]<<16) + (contenuBT[7]<<24);
+  myData.ln = contenuBT[8];
+  int i;
+  for(i=0;i<8;i++)
+  {
+    myData.dt[i]=contenuBT[i+9];
+  }
+}
+//Connect to the BLE Server that has the name, Service, and Characteristics
+bool connectToServer(BLEAddress pAddress) {
+   BLEClient* pClient = BLEDevice::createClient();
+ 
+  // Connect to the remove BLE Server.
+  pClient->connect(pAddress);
+  Serial.println(" - Connected to server");
+ 
+  // Obtain a reference to the service we are after in the remote BLE server.
+  BLERemoteService* pRemoteService = pClient->getService(serviceUUID);
+  if (pRemoteService == nullptr) {
+    Serial.print("Failed to find our service UUID: ");
+    Serial.println(serviceUUID.toString().c_str());
+    return (false);
+  }
+ 
+  // Obtain a reference to the characteristics in the service of the remote BLE server.
+  prxRemoteCharacteristic = pRemoteService->getCharacteristic(rxUUID);
+  ptxRemoteCharacteristic = pRemoteService->getCharacteristic(txUUID);
+
+  if (prxRemoteCharacteristic == nullptr || ptxRemoteCharacteristic == nullptr) {
+    Serial.print("Failed to find our characteristic UUID");
+    return false;
+  }
+  Serial.println(" - Found our characteristics");
+ 
+  //Assign callback functions for the Characteristics
+  ptxRemoteCharacteristic->registerForNotify(CANNotifyCallback);
+  connected = true;
+  return true;
+}

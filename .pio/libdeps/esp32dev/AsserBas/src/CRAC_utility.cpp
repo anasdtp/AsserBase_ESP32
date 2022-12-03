@@ -10,8 +10,9 @@
 #include "CRAC_utility.h"
 #include "Arduino.h"
 #include <math.h>
+#include <ESP32Encoder.h>
 
-
+#define VIT_MAX 1740//1740 normalement
 /****************************************************************************************/
 /*                          Definition des variables                                    */
 /****************************************************************************************/
@@ -27,6 +28,9 @@ const double LARGEUR_ROBOT_TIC = LARGEUR_ROBOT/(PERIMETRE_ROUE_CODEUSE / RESOLUT
 
 unsigned char tC1, tC2, tC3, tC4, tC5, nbexpr;
 
+BUF_CIRC_DEF(buffer_distanceG, 50);
+BUF_CIRC_DEF(buffer_distanceD, 50);
+
 ESP32Encoder EncoderD;
 ESP32Encoder EncoderG;
 
@@ -41,8 +45,8 @@ void Encodeur_Init(){
 	EncoderG.attachHalfQuad(39, 36);
 
 	// clear the encoder's raw count and set the tracked count to zero
-  EncoderD.clearCount();
-  EncoderG.clearCount();
+    EncoderD.clearCount();
+    EncoderG.clearCount();
 }
                 
 /****************************************************************************************/
@@ -54,7 +58,7 @@ void Encodeur_Init(){
 void AsserInitCoefs()
 {
     //Coefficients de correction de l'asservissement
-    Kpp = 2;//0.9     //0.4 0.5  //plus grand = roue qui forcent plus pour revenir //2 avant
+    Kpp = 8;//0.9     //0.4 0.5  //plus grand = roue qui forcent plus pour revenir //2 avant
     Kip = 0;//0.0007; le 7 juin 2021  //.0001;   //0.0007 0.0005 // suppression de Ki pour tests de reset //0 avant
     Kdp = 2;     //0.1 0.5     //plus grand = asservissement plus dur //2 avant
        
@@ -110,11 +114,11 @@ void Asser_Init(void)
     Asser_Init_G();
 }
 /****************************************************************************************/
-/* NOM : Assert_Init                                                                    */
-/* ARGUMENT : rien                                                                      */
+/* NOM : Asser_Pos_Mot                                                                    */
+/* ARGUMENT :                                                                       */
 /* RETOUR : rien                                                                        */
-/* DESCRIPTIF : permet d'initialisation les variables globales de chaque cote           */
-/**/
+/* DESCRIPTIF :            */
+/****************************************************************************************/
 
 void Asser_Pos_Mot(double pcons_posG, double pcons_posD, double* commandeG, double* commandeD)
 {
@@ -238,6 +242,16 @@ double Asser_Pos_MotG(double pcons_pos)
     return commande;
 }
 
+/****************************************************************************************/
+/* NOM : lireCodeurD                                                                    */
+/* ARGUMENT : rien                                                                      */
+/* RETOUR : double                                                                      */
+/* DESCRIPTIF : permet de lire la valeur de l'encodeur droit                            */
+/****************************************************************************************/
+double lireCodeurD(void)
+{
+    return COEF_ROUE_DROITE*EncoderD.getCount();
+}
 
 
 /****************************************************************************************/
@@ -245,15 +259,25 @@ double Asser_Pos_MotG(double pcons_pos)
 /* ARGUMENT : long pcons : consigne fixée                                               */
 /* RETOUR : char                                                                        */
 /* DESCRIPTIF : permet de lire la valeur de l'encodeur droit                            */
-
+/****************************************************************************************/
 void lectureErreur(void)
 {
     if ((ErreurPosD >= EXPLOSION_TAUX) || (ErreurPosG >= EXPLOSION_TAUX)){
-        liste[cpt_ordre].type = TYPE_MOUVEMENT_SUIVANT;
+        liste.type = TYPE_MOUVEMENT_SUIVANT;
         Message_Fin_Mouvement = ASSERVISSEMENT_ERREUR;
     }
 }
 
+/****************************************************************************************/
+/* NOM : lireCodeurG                                                                    */
+/* ARGUMENT : rien                                                                      */
+/* RETOUR : double                                                                      */
+/* DESCRIPTIF : permet de lire la valeur de l'encodeur gauche                           */
+/****************************************************************************************/
+double lireCodeurG(void)
+{
+    return COEF_ROUE_GAUCHE*EncoderG.getCount();
+}
 
 /****************************************************************************************/
 /* NOM : write_PWMD                                                                     */
@@ -261,19 +285,19 @@ void lectureErreur(void)
 /* RETOUR : rien                                                                        */
 /* DESCRIPTIF : permet de choisir la vitesse du moteur 1                                */
 /****************************************************************************************/
-void write_PWMD(double vit)
+void write_PWMD(int vit)
 {
     if(vit >= 0)                    //Mode Avancer 
     {
-        Moteur_D_INA_Write(0);
-        Moteur_D_INB_Write(1);
+        Moteur_D_INA_Write(1);      
+        Moteur_D_INB_Write(0);
         if(vit > VIT_MAX) vit = VIT_MAX;    //Palier de vitesse fixé à 250
         PWM_D_WriteCompare(vit);    
     }
     else                            //Mode Reculer
     {
-        Moteur_D_INA_Write(1);
-        Moteur_D_INB_Write(0);
+        Moteur_D_INA_Write(0);
+        Moteur_D_INB_Write(1);
         if(vit < -VIT_MAX) vit = -VIT_MAX;  //Palier de vitesse fixé à 250
         PWM_D_WriteCompare(-vit);
         
@@ -293,7 +317,7 @@ void write_PWMD(double vit)
 /* RETOUR : rien                                                                        */
 /* DESCRIPTIF : permet de choisir la vitesse du moteur 2                                */
 /****************************************************************************************/
-void write_PWMG(double vit)
+void write_PWMG(int vit)
 {
     if(vit >= 0)                    //Mode Avancer
     {
@@ -327,13 +351,6 @@ void write_PWMG(double vit)
  RETOUR : rien                                                                        
  DESCRIPTIF : Fonction appelee pour effectuer un arret                                
 ***************************************************************************************/
-void Arret(void)
-{    
-    
-    //Ecrire un PWM egal a 0
-    write_PWMG(0);   
-    write_PWMD(0);
-}
 
 void Arret_Brutal(void)
 {
@@ -346,33 +363,18 @@ void Arret_Brutal(void)
         Asser_Init();
 }
 
-/****************************************************************************************/
-/* NOM : lireCodeurG                                                                    */
-/* ARGUMENT : rien                                                                      */
-/* RETOUR : double                                                                      */
-/* DESCRIPTIF : permet de lire la valeur de l'encodeur gauche                           */
-/****************************************************************************************/
-double lireCodeurG(void)
-{
-    return COEF_ROUE_GAUCHE*EncoderG.getCount();
+void Arret(void)
+{    
+    
+    //Ecrire un PWM egal a 0
+    write_PWMG(0);   
+    write_PWMD(0);
 }
-/****************************************************************************************/
-/* NOM : lireCodeurD                                                                    */
-/* ARGUMENT : rien                                                                      */
-/* RETOUR : double                                                                      */
-/* DESCRIPTIF : permet de lire la valeur de l'encodeur droit                            */
-/****************************************************************************************/
-double lireCodeurD(void)
-{
-    return COEF_ROUE_DROITE*EncoderD.getCount();
-}
-
 
 int signesDif(double v1, double v2)
 {
     return (v1>=0) != (v2>=0);
 }
-
 
 void Moteur_G_INA_Write(bool set){
   digitalWrite(26, set);
@@ -395,6 +397,4 @@ void PWM_D_WriteCompare(int vit){
 void PWM_G_WriteCompare(int vit){
   ledcWrite(0, vit);
 }
-
-
 /* [] END OF FILE */

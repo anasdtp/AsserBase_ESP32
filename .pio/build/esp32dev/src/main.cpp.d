@@ -164,9 +164,9 @@
  C:/Users/Crac/.platformio/packages/framework-arduinoespressif32/libraries/BLE/src/BLE2902.h \
  C:/Users/Crac/.platformio/packages/framework-arduinoespressif32/libraries/Wire/src/Wire.h \
  C:/Users/Crac/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal.h \
- .pio/libdeps/esp32dev/ESP32Encoder/src/ESP32Encoder.h \
- C:/Users/Crac/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/driver/include/driver/pcnt.h \
- C:/Users/Crac/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/hal/include/hal/pcnt_types.h \
  .pio/libdeps/esp32dev/AsserBas/src/CRAC_utility.h \
  .pio/libdeps/esp32dev/AsserBas/src/ident_crac.h \
- .pio/libdeps/esp32dev/AsserBas/src/ident_crac.h
+ .pio/libdeps/esp32dev/AsserBas/src/buffer_circulaire.h \
+ .pio/libdeps/esp32dev/AsserBas/src/ident_crac.h \
+ .pio/libdeps/esp32dev/AsserBas/src/buffer_circulaire.h \
+ .pio/libdeps/esp32dev/AsserBas/src/clotho.h
