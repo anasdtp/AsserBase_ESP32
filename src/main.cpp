@@ -6,10 +6,7 @@
 #include "buffer_circulaire.h"
 #include "clotho.h"
 //----------------------------------------------------------------------Variables
-
-
 bool set = false;
-
 int inApin_MOTD = 16; // INA2 checked
 int inApin_MOTG = 26; // INA1 checked
 int inBpin_MOTD = 15; // INB2 checked
@@ -17,13 +14,10 @@ int inBpin_MOTG = 25; // INB1 checked
   // PWM moteur
 int PWM_MOTD = 18;    // PIN18
 int PWM_MOTG = 17;    
-
 int PWMDChannel = 0;
 int PWMGChannel = 1;
-
 int joyMot = 500;
 double erreur = 0;
-
 /****************************************************************************************/
 /*                           Definition et affectation des variables                   */
 /*            Par souci de simplicité, on utilise beaucoup de variables globales        */
@@ -34,18 +28,14 @@ double          consigne_pos, consigne_vit,                 // Consignes de posi
                 roue_drt_init, roue_gch_init,               // Valeur des compteurs (!= 0) quand on commence un nouveau mouvement
                 global_ta_stop=0,global_decel_stop=0,
                 old_posD=0,old_posG=0;
-
                 
 unsigned short cpt = 0,cpt_arret=0;
-
 int cpt_ordre = 0;
                 
-
                 
 volatile uint16_t          mscount = 0,      // Compteur utilisé pour envoyer échantillonner les positions et faire l'asservissement
                          mscount1 = 0,     // Compteur utilisé pour envoyer échantillonner les positions et faire l'asservissement
                          mscount2 = 0;     // Compteur utilisé pour envoyer la trame CAN d'odométrie
-
 double consigne_posG = 0, consigne_posD = 0;
 float distanceG = 0, distanceD = 0;
 char flagDebutBezier = 0;
@@ -57,7 +47,6 @@ int nbValeurs = 0;
 //Par contre, pour les fonctions Ligne_droite, Rotation, et asser_pos c'est exprimé en ticks d'encodeur
 /****************************************************************************************/
                              
-
 /****************************************************************************************/
 /*                               Deplacement a effectuer                                */
 /*                Liste des ordres de déplacement à effectuer à la suite                */
@@ -65,21 +54,15 @@ int nbValeurs = 0;
 /****************************************************************************************/ 
 struct Ordre_deplacement liste;
 //clothoStruc maClotho;
-
-
 //----------------------------------------------------------------------Timer
 static char idTimer = 0; //le numéro du Timer de 0 à 3
 static int prescaler = 8000; // la valeur du diviseur de temps
 bool flag = true; //vrai pour compter sur le front montant, faux pour compter sur le front descendant
 int totalInterrupts = 0;   // compte le nombre de declenchement de l alarme
-
 hw_timer_t * timer = NULL;
 portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
-
-
 void init_Timer();
 void onTime();//prototype de la fonction s'exécutent à chaque interruptions
-
 //----------------------------------------------------------------------prototypes fonctions Asservissement (dans l'ordre (enfin je crois))
 void calcul(void);
 void Mouvement_Elementaire(long pcons, short vmax, short amax, short dmax, char mvt);
@@ -93,7 +76,6 @@ void Recalage(int pcons, short vmax, short amax, short dir, short nv_val);
 int Courbe_bezier(double distanceG, double distanceD);
 void Odometrie(void);
 void asser_position(); //temporaire, pour test
-
 //----------------------------------------------------------------------prototypes fonctions BLE et CAN
 void setupCAN();
 void writeStructInCAN(const CANMessage &theDATA);
@@ -106,20 +88,32 @@ void readDATA();
 void remplirStruct(int id, char len, char dt0, char dt1, char dt2, char dt3, char dt4, char dt5, char dt6, char dt7);
 void CANenvoiMsg1x8Bytes(uint32_t id, void *pdata);
 void CANenvoiMsg2x4Bytes(uint32_t id, void *pdata1, void *pdata2);
-
 //----------------------------------------------------------------------callback fonctions
-
-
+static void CANNotifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristic, uint8_t* pData, size_t length, bool isNotify) {
+  //store can value
+  contenuBt = (char*)pData;
+  newCan = true;
+}
+static void notifyCallback(
+  BLERemoteCharacteristic* pBLERemoteCharacteristic,
+  uint8_t* pData,
+  size_t length,
+  bool isNotify) {
+    Serial.print("Notify callback for characteristic ");
+    Serial.print(pBLERemoteCharacteristic->getUUID().toString().c_str());
+    Serial.print(" of data length ");
+    Serial.println(length);
+    Serial.print("data: ");
+    Serial.println((char*)pData);
+}
 class MyClientCallback : public BLEClientCallbacks {
   void onConnect(BLEClient* pclient) {
   }
-
   void onDisconnect(BLEClient* pclient) {
     connected = false;
     Serial.println("onDisconnect");
   }
 };
-
 //Callback function that gets called, when another device's advertisement has been received
 class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
   void onResult(BLEAdvertisedDevice advertisedDevice) {
@@ -131,46 +125,34 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
     }
   }
 };
-
-
-
-
 void Moteur_Init();
 void setupPWM(int PWMpin, int PWMChannel);
-
-
 //----------------------------------------------------------------------SETUP
 void setup() {
   Serial.begin(115200);
   setupCAN();
-
   //Init BLE device
   slaveBTConnect("ESP32EA");
   Serial.printf("fin ble init\n");
-
   Encodeur_Init();
   Serial.printf("fin encodeur init\n");
   Moteur_Init();
   Serial.printf("fin moteur init\n");
   AsserInitCoefs();
   Asser_Init();
-
   init_Timer();
   Serial.printf("fin init Timer\n");
-
   remplirStruct(ALIVE_MOTEUR,0,0,0,0,0,0,0,0,0);
   writeStructInCAN(DATArobot);
   Serial.printf("envoie CAN\n");
-
   Serial.println("fin setup\n");
-  liste.type = TYPE_DEPLACEMENT_BEZIER;//test
+  //liste.type = TYPE_DEPLACEMENT_BEZIER;//test
 }
 //----------------------------------------------------------------------loop
 void loop() {
   CANloop();
   calcul();
   Odometrie();
-
   if (mscount >= (TE_100US)) 
   {   
     Serial.println("erreur temp calcul");
@@ -186,11 +168,7 @@ void loop() {
   //digitalWrite(27, set);//pour mesurer le temps de boucle avec l'oscilloscope
   //set = !set;
   mscount = 0;                    
-
 }
-
-
-
 //----------------------------------------------------------------------fonctions
 /***************************************************************************************
  NOM : calcul                                                              
@@ -210,11 +188,9 @@ void loop() {
                     short rayon, vit_ray, theta_ray;
                 };
 ***************************************************************************************/
-
 void calcul(void){//fait!!
     static int cpt_stop = 0;
     static char etat_prec = TYPE_DEPLACEMENT_IMMOBILE, etat_automate_depl_prec = INITIALISATION;
-
     if(stop_receive!=1)
     {
         #if F_DBUG_ETAT
@@ -245,7 +221,7 @@ void calcul(void){//fait!!
        
         if (Fin_Match){
             liste.type = (TYPE_END_GAME);
-            Serial.println("");
+            Serial.println("INSTRUCTION_END_MOTEUR");
             //On prévient qu'on s'est arrêté
             // le dlc original était de 2 avec un 0 en second octet
             remplirStruct(INSTRUCTION_END_MOTEUR, 1, 0x04, 0,0,0,0,0,0,0);
@@ -258,7 +234,6 @@ void calcul(void){//fait!!
         }
           
         double cmdD, cmdG;
-
         switch(liste.type)
         {
             case (TYPE_END_GAME) :{
@@ -435,11 +410,9 @@ void calcul(void){//fait!!
             if(flagDebutBezier == 0)
             {
                 Message_Fin_Mouvement = (ASSERVISSEMENT_BEZIER);
-
                 //Recuperation des valeurs dans le buffer
                 buf_circ_pop(&buffer_distanceD, &distanceD);
                 buf_circ_pop(&buffer_distanceG, &distanceG);
-
                 flagDebutBezier = 1;
                 nbValeurs = 0;
             }
@@ -451,23 +424,20 @@ void calcul(void){//fait!!
                 //Recuperation des valeurs dans le buffer
                 buf_circ_pop(&buffer_distanceD, &distanceD);
                 buf_circ_pop(&buffer_distanceG, &distanceG);
-
                 nbValeurs = 0;
             }
             
-
             //Il y a de la place dans les buffer, demande nouvelles valeurs
             if(buf_circ_free_space(&buffer_distanceG) > 0)
             {
                 //L'envoi d'un ack provoque l'envoi d'une nouvelle valeur
-                DATArobot.ID = ACKNOWLEDGE_BEZIER;
-                DATArobot.RTR = true;
+                Serial.println("ACKNOWLEDGE_BEZIER");
+                remplirStruct(ACKNOWLEDGE_BEZIER,0,0,0,0,0,0,0,0,0);
                 writeStructInCAN(DATArobot);
                 //CANenvoiMsg(ACKNOWLEDGE_BEZIER);
             }
             
             nbValeurs ++; //Permet de savoir le nombre de valeurs utilisées
-
             if(Courbe_bezier(distanceG/(FACTEUR_DIVISION), distanceD/(FACTEUR_DIVISION))) //Vrai si fin du mouvement
             {
                 liste.type = (TYPE_MOUVEMENT_SUIVANT);
@@ -540,8 +510,7 @@ void calcul(void){//fait!!
         
             
             //CANenvoiMsg4x1Byte(INSTRUCTION_END_MOTEUR, Message_Fin_Mouvement, 0, cpt_ordre, liste.enchainement); a faire
-
-            //CANenvoiMsg3x2Bytes(ODOMETRIE_SMALL_POSITION, Odo_x, Odo_y, ((int16)Odo_theta) % 3600); a faire       
+            //CANenvoiMsg3x2Bytes(ODOMETRIE_SMALL_POSITION, Odo_x, Odo_y, ((int16_t)Odo_theta) % 3600); a faire       
            
             if( liste.enchainement == 1)
             {
@@ -603,7 +572,6 @@ void calcul(void){//fait!!
     //On calcule l'odométrie à chaque tour de boucle
     //Odometrie();   
 }
-
 /***************************************************************************************
  NOM : Mouvement Elementaire                                                           
  ARGUMENT : long pcons -> distance a parcourir (>0 : avancer et <0 : reculer          
@@ -863,7 +831,6 @@ void Mouvement_Elementaire(long pcons, short vmax, short amax, short dmax, char 
         lectureErreur();
     }
 }
-
 /***************************************************************************************
  NOM : Rayon_De_Courbure                                                              
  ARGUMENT : short rayon -> rayon de l'arc de cercle a parcourir                       
@@ -1089,13 +1056,10 @@ void Rayon_De_Courbure(short rayon, short theta, short vmax, short amax, short s
         //Envoi de la vitesse aux moteurs
         write_PWMG(cmdG);   
         write_PWMD(cmdD);
-
         //Arret si le robot est bloqué
         lectureErreur();
-
     }
 }
-
 void trait_Mouvement_Elementaire_Gene(struct Ordre_deplacement* monDpl)//fait
 {
     /*
@@ -1191,7 +1155,6 @@ void trait_Mouvement_Elementaire_Gene(struct Ordre_deplacement* monDpl)//fait
     }
     
     #if F_DBUG_LIGNE_GEN_TPS
-
     // CANenvoiMsg4x2Bytes(ID_TEMPS, ta, tc, td, 0x100 | (0xFF & etat_automate_depl));
     
     CANenvoiMsg2x4Bytes(ID_TEMPS_LONG_1, &ta, &tc);
@@ -1214,7 +1177,6 @@ void trait_Mouvement_Elementaire_Gene(struct Ordre_deplacement* monDpl)//fait
     //CANenvoiMsg1Byte(ID_TRAIT_LIGNE_GENE, 2);
     #endif
 }
-
 void trait_Rayon_De_Courbure_Clotho(struct Ordre_deplacement* monDpl)
 {
     unsigned long tc, ta, td;   //tc temps à vitesse constante, ta en acceleration, td en deceleration, temp en nombre d'étt d'automate
@@ -1222,6 +1184,7 @@ void trait_Rayon_De_Courbure_Clotho(struct Ordre_deplacement* monDpl)
     int pcons, rapport;
     
     #if F_DBUG_TRAIT_ETAT_CLOTHO
+    Serial.println("ID_TRAIT_CLOTHO");
     remplirStruct(ID_TRAIT_CLOTHO, 1, 0x01, 0,0,0,0,0,0,0);
     writeStructInCAN(DATArobot);                             //CAN
     //CANenvoiMsg1Byte(ID_TRAIT_CLOTHO, 1);
@@ -1232,14 +1195,12 @@ void trait_Rayon_De_Courbure_Clotho(struct Ordre_deplacement* monDpl)
     
     maClotho.accel = monDpl->amax * 0.001;//accel;
     maClotho.vit = fabs(monDpl->vinit);
-
     maClotho.angleDArc = fabs((double)monDpl->theta_ray);
     
     
     maClotho.rayondDeCourbre = monDpl->rayon/DTIC; // on convertir des mm en tic
     
     flagVir = possibiliteVirage(&maClotho);
-
     remplirStruct(ID_CLOTHO_IMPOSSIBLE, 1, flagVir, 0,0,0,0,0,0,0);
     writeStructInCAN(DATArobot);                             //CAN
     //CANenvoiMsg1Byte(ID_CLOTHO_IMPOSSIBLE, flagVir);
@@ -1288,7 +1249,6 @@ void trait_Rayon_De_Courbure_Clotho(struct Ordre_deplacement* monDpl)
         CANenvoiMsg2x4Bytes(ID_TEMPS_LONG_1, &ta, &tc);
         /*
         CANenvoiMsg4Bytes(ID_TEMPS_LONG_2, &td);
-
         CANenvoiMsg2x2Bytes(ID_DBUG_LIGNE_GENE_VIT, monDpl->vinit, monDpl->vinit); */
         
     #endif
@@ -1300,8 +1260,6 @@ void trait_Rayon_De_Courbure_Clotho(struct Ordre_deplacement* monDpl)
     #endif
     
 }
-
-
 /***************************************************************************************
  NOM : Mouvement Elementaire_Gene                                                        
  ARGUMENT : long pcons -> distance a parcourir (>0 : avancer et <0 : reculer ) // exprimée en tic         
@@ -1531,7 +1489,6 @@ void Mouvement_Elementaire_Gene(struct Ordre_deplacement monDpl)//fait
         lectureErreur();
     }
 }
-
 /***************************************************************************************
  NOM : Rayon_De_Courbure_Clotho                                                              
  ARGUMENT : short rayon -> rayon de l'arc de cercle a parcourir                       
@@ -1675,8 +1632,8 @@ void Rayon_De_Courbure_Clotho(struct Ordre_deplacement monDpl)//fait
                 cpt = 0;
                 finRayonCourbureClo = 1;
                 etat_automate_depl = INITIALISATION; 
-                DATArobot.ID = 0x002;
-                DATArobot.RTR = true;
+                Serial.println("0x002");
+                remplirStruct(0x002,0,0,0,0,0,0,0,0,0);
                 writeStructInCAN(DATArobot);
                 //CANenvoiMsg(0x002);
             }
@@ -1722,15 +1679,10 @@ void Rayon_De_Courbure_Clotho(struct Ordre_deplacement monDpl)//fait
         //Envoi de la vitesse aux moteurs
         write_PWMG(cmdG);   
         write_PWMD(cmdD);
-
         //Arret si le robot est bloqué
         lectureErreur();
-
     }
 }
-
-
-
 /***************************************************************************************
  NOM : X_Y_Theta                                                                      
  ARGUMENT : long px -> position en x a atteindre                                      
@@ -1834,7 +1786,7 @@ void X_Y_Theta(long px, long py, long ptheta, long sens, short vmax, short amax)
                 roue_drt_init = lireCodeurD();
                 roue_gch_init = lireCodeurG();
                 finMvtElem = 0;
-
+                Serial.println("INSTRUCTION_END_MOTEUR");
                 remplirStruct(INSTRUCTION_END_MOTEUR, 2, 0x30, 0x00,0,0,0,0,0,0);
                 writeStructInCAN(DATArobot);
                 ////CANenvoiMsg2x1Byte(INSTRUCTION_END_MOTEUR, 0x30, 0);
@@ -1853,6 +1805,7 @@ void X_Y_Theta(long px, long py, long ptheta, long sens, short vmax, short amax)
                 roue_drt_init = lireCodeurD();
                 roue_gch_init = lireCodeurG();
                 finMvtElem = 0;
+                Serial.println("INSTRUCTION_END_MOTEUR");
                 remplirStruct(INSTRUCTION_END_MOTEUR, 2, 0x40, 0x00,0,0,0,0,0,0);
                 writeStructInCAN(DATArobot);
                 ////CANenvoiMsg2x1Byte(INSTRUCTION_END_MOTEUR, 0x40, 0);
@@ -1883,7 +1836,6 @@ void X_Y_Theta(long px, long py, long ptheta, long sens, short vmax, short amax)
         break;
     }
 }
-
 /***************************************************************************************
  NOM : Recalage                                                                       
  ARGUMENT : long pcons -> distance a parcourir (>0 : avancer et <0 : reculer          
@@ -2134,7 +2086,6 @@ void Recalage(int pcons, short vmax, short amax, short dir, short nv_val)//fait
                 break;
         }
     }
-
     //Calcul des commandes
     double cmdD, cmdG;
     cmdD = Asser_Pos_MotD(roue_drt_init + consigne_pos);
@@ -2143,9 +2094,6 @@ void Recalage(int pcons, short vmax, short amax, short dir, short nv_val)//fait
     write_PWMG(cmdG);   
     write_PWMD(cmdD);
 }
-
-
-
 int Courbe_bezier(double distanceG, double distanceD)
 {
     if((distanceG >= (666/FACTEUR_DIVISION)) && (distanceD >= (666/FACTEUR_DIVISION))) //Valeurs indiquant la fin de la courbe
@@ -2154,7 +2102,6 @@ int Courbe_bezier(double distanceG, double distanceD)
         consigne_posG = 0;
         return 1; //Retourne 1 pour indiquer la fin et passer au mouvement suivant
     }
-
     consigne_posG += distanceG;
     consigne_posD += distanceD;
    
@@ -2164,13 +2111,8 @@ int Courbe_bezier(double distanceG, double distanceD)
     cmdG = Asser_Pos_MotG(roue_gch_init + consigne_posG);
     write_PWMG(cmdG);   
     write_PWMD(cmdD);
-
     return 0;
 }
-
-
-
-
 /***************************************************************************************
  NOM : Odometrie                                                                      
  ARGUMENT : rien                                                                      
@@ -2201,7 +2143,6 @@ void Odometrie(void)//fait
     //Stockage de la derniere valeur de l'odometrie
     Odo_last_val_pos_D = Odo_val_pos_D;
     Odo_last_val_pos_G = Odo_val_pos_G;
-
     //mscount1 ++;
         
     /*/Condition d'envoi des informations de l'odometrie par CAN 
@@ -2209,13 +2150,10 @@ void Odometrie(void)//fait
     {
       mscount1 = 0;
     }*/
-
     //Serial.printf("distance x : %lf et y : %lf ; angle : %lf\n", dist, ang, Odo_x, Odo_y, Odo_theta);
-
         
     
 }  
-
 void Moteur_Init(){
   //init pins carte de puiss
   pinMode(inApin_MOTG, OUTPUT);
@@ -2225,26 +2163,22 @@ void Moteur_Init(){
   pinMode(PWM_MOTG, OUTPUT);
   pinMode(PWM_MOTD, OUTPUT);
   pinMode(27, OUTPUT);
-
   //mise à l'arret
   digitalWrite(inApin_MOTG, LOW);
   digitalWrite(inApin_MOTD, LOW);
   digitalWrite(inBpin_MOTG, LOW);
   digitalWrite(inBpin_MOTD, LOW);
-
   //init pwm
   setupPWM(PWM_MOTD, PWMDChannel);
   setupPWM(PWM_MOTG, PWMGChannel);
 }
-
 //----------------------------------------------------------------------fonctions CAN et BLE
-
 void CANloop(){
-  if(canAvailable){
-    canAvailable = false;
-    Serial.println("CAN received");
+  if(canAvailable || BtAvailable){
     canReadExtRtr();//On le me ici pour ne pas surcharger l'interruption CAN.onRecveive
-
+    canAvailable = false; BtAvailable = false;
+    Serial.println("CAN received");
+    
     switch (DATAtoControl.ID)
     {
     case ASSERVISSEMENT_REQUETE_PID:
@@ -2328,51 +2262,209 @@ void CANloop(){
                     VMAX = ((double)DATAtoControl.dt[0]+256*DATAtoControl.dt[1])*k;
                     DMAX = ((double)DATAtoControl.dt[2]+256*DATAtoControl.dt[3])*k*k;
                     ralentare = 1;
-                    
+                    Serial.println("ACKNOWLEDGE_MOTEUR");
                     remplirStruct(ACKNOWLEDGE_MOTEUR, 2, 0x19, 0,0,0,0,0,0,0);
                     writeStructInCAN(DATArobot);
                     //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x19, 0);
                 }
                 Serial.println("ASSERVISSEMENT_DECEL");
             break;
+            case ASSERVISSEMENT_XYT :
+            {
+                    // `#START MESSAGE_X_Y_Theta_RECEIVED` 
+                    stop_receive = 0;
+
+                    //On vide le buffer de mouvements
+                    liste = (struct Ordre_deplacement){TYPE_DEPLACEMENT_IMMOBILE,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+                    nb_ordres = 0;
+                    cpt_ordre = 0;
+
+                    liste.x = (DATAtoControl.dt[1] << 8) | DATAtoControl.dt[0];
+                    liste.y = (DATAtoControl.dt[3] << 8) | DATAtoControl.dt[2];
+                    liste.theta = (DATAtoControl.dt[5] << 8) | DATAtoControl.dt[4];
+                    liste.sens =  DATAtoControl.dt[6];
+                    liste.type = TYPE_DEPLACEMENT_X_Y_THETA;
+                    liste.vmax = VMAX;
+                    liste.amax = AMAX;        
+                    Serial.println("ACKNOWLEDGE_MOTEUR");
+                    remplirStruct(ACKNOWLEDGE_MOTEUR, 2, 0x20, 0,0,0,0,0,0,0);
+                    writeStructInCAN(DATArobot);    
+                    //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x20, 0);
+            }
+            break;
+            case ASSERVISSEMENT_COURBURE:
+            {
+                /* `#START MESSAGE_Rayon_de_courbure_RECEIVED` */
+                stop_receive = 0;
+
+                int16_t rayon = (DATAtoControl.dt[1] << 8) | DATAtoControl.dt[0];
+                int16_t theta = (DATAtoControl.dt[3] << 8) | DATAtoControl.dt[2];
+                uint8_t sens = DATAtoControl.dt[4];
+                uint8_t enchainement = DATAtoControl.dt[5];
+                uint8_t speedRatio = DATAtoControl.dt[6];
+        
+                if (enchainement)
+                {
+                    liste.type = TYPE_DEPLACEMENT_RAYON_COURBURE_CLOTHOIDE;
+                    liste.rayon = rayon;
+                    liste.theta_ray = theta;
+                    liste.sens = sens;
+                    liste.vmax = VMAX;
+                    liste.amax = AMAX_CLO;
+                    liste.dmax = DMAX;
+                    liste.enchainement = enchainement;
+                    liste.vinit = VMAX;//(long)((long)(VMAX)*(long)(speedRatio))>>8;
+                    nb_ordres++;
+            
+                    if(enchainement == (2 || 1)) // ERREUR ?!?
+                    {
+                        Serial.println("ACKNOWLEDGE_MOTEUR");
+                        remplirStruct(ACKNOWLEDGE_MOTEUR, 2, 0x21, 0,0,0,0,0,0,0);
+                        writeStructInCAN(DATArobot);
+                        //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x21, 0 /* enchainement<<3 */);                
+                    }
+                }
+                else
+                {
+                    liste = (struct Ordre_deplacement){TYPE_DEPLACEMENT_IMMOBILE,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+                    nb_ordres = 0;
+                    cpt_ordre = 0;
+                    liste.type = TYPE_DEPLACEMENT_RAYON_COURBURE;
+                    liste.rayon = rayon;
+                    liste.theta_ray = theta;
+                    liste.sens = sens;
+                    liste.vmax = VMAX;
+                    liste.amax = AMAX;
+                    liste.enchainement = enchainement;
+                    Serial.println("ACKNOWLEDGE_MOTEUR");
+                    remplirStruct(ACKNOWLEDGE_MOTEUR, 2, 0x21, 0,0,0,0,0,0,0);
+                    writeStructInCAN(DATArobot);
+                    //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x21, 0);
+                }
+        
+            }
+            break;  
+            case ASSERVISSEMENT_ROTATION:
+            {
+                /* `#START MESSAGE_Rotation_RECEIVED` */
+                stop_receive = 0;
+
+                liste = (struct Ordre_deplacement){TYPE_DEPLACEMENT_IMMOBILE,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+                nb_ordres = 0;
+                cpt_ordre = 0;
+
+                int16_t angle = (DATAtoControl.dt[1] << 8) | DATAtoControl.dt[0];
+        
+                liste.type = TYPE_DEPLACEMENT_ROTATION;
+                liste.angle = LARGEUR_ROBOT * M_PI * RESOLUTION_ROUE_CODEUSE * angle / (3600 * PERIMETRE_ROUE_CODEUSE);
+                liste.vmax = VMAX;
+                liste.amax = AMAX;
+                Serial.println("ACKNOWLEDGE_MOTEUR");
+                remplirStruct(ACKNOWLEDGE_MOTEUR, 2, 0x23, 0,0,0,0,0,0,0);
+                writeStructInCAN(DATArobot);
+                //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x23, 0);
                 
+            }
+            break;  
+            case ASSERVISSEMENT_BEZIER:
+            {
+                 /* `#START MESSAGE_Courbe_Bezier_RECEIVED` */
+        
+                // distance roue droite en ticks d'encodeur
+                int32_t distRoueDroite = (DATAtoControl.dt[3] << 24) | (DATAtoControl.dt[2] << 16) | (DATAtoControl.dt[1] << 8) | DATAtoControl.dt[0];          //distance roue droite(4/4) |
+                // distance roue gauche en ticks d'encodeur
+                int32_t distRoueGauche = (DATAtoControl.dt[7] << 24) | (DATAtoControl.dt[6] << 16) | (DATAtoControl.dt[5] << 8) | DATAtoControl.dt[4];
+        
+                //Reception premiere valeur de la courbe
+                if(flagDebutBezier == 0)
+                {
+                    liste.type = TYPE_DEPLACEMENT_BEZIER;
+                }
+
+                //Stockage des valeurs dans les buffer
+                buf_circ_push(&buffer_distanceD, distRoueDroite);
+                buf_circ_push(&buffer_distanceG, distRoueGauche);
+
+                //Il y a de la place dans les buffer, demande nouvelles valeurs
+                if(buf_circ_free_space(&buffer_distanceG) > 0)
+                {
+                    //L'envoi d'un ack provoque l'envoi d'une nouvelle valeur
+                    Serial.println("ACKNOWLEDGE_BEZIER");
+                    remplirStruct(ACKNOWLEDGE_BEZIER,0,0,0,0,0,0,0,0,0);
+                    writeStructInCAN(DATArobot);
+                    //CANenvoiMsg(ACKNOWLEDGE_BEZIER);
+                }
+        
+        
+
+            }
+            break;  
+            case ASSERVISSEMENT_STOP:
+            {
+                /* `#START MESSAGE_Stop_RECEIVED` */
+                stop_receive = 1;
+                Serial.println("ACKNOWLEDGE_MOTEUR");
+                remplirStruct(ACKNOWLEDGE_MOTEUR, 2, 0x01, 0,0,0,0,0,0,0);
+                writeStructInCAN(DATArobot);
+                //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x01, 0);
+            }
+            break;  
+            case GLOBAL_GAME_END:
+            {
+                 /* `#START MESSAGE_End_Game_RECEIVED` */
+                Fin_Match = 1;
+            }
+
+            case CHECK_MOTEUR:
+            {
+                /* `#START MESSAGE_Check_RECEIVED` */
+                attente = 1;
+                Serial.println("ALIVE_MOTEUR");
+                remplirStruct(ALIVE_MOTEUR, 0, 0, 0,0,0,0,0,0,0);
+                writeStructInCAN(DATArobot);
+                //CANenvoiMsg(ALIVE_MOTEUR);
+            }
+            break;
+
+            case 0x00:
+            {
+                
+            }
+            break;  
+            
             default :
             
             break;
     }
-
     // Send message to master via bleutooth
     /*if (connected){
       prxRemoteCharacteristic->writeValue((uint8_t *)&DATAtoControl, sizeof(DATAtoControl));
       Serial.println("Sending via BT...");
     } else{Serial.println("The device is not connected");}*/
   }
-
   // If the flag "doConnect" is true then we have scanned for and found the desired
   // BLE Server with which we wish to connect.  Now we connect to it.  Once we are
   // connected we set the connected flag to be true.
-  /*if (doConnect == true) {
+    if (doConnect == true) {
     if (connectToServer(*pServerAddress)) {
       Serial.println("We are now connected to the BLE Server.");
       //Activate the Notify property of each Characteristic
       ptxRemoteCharacteristic->getDescriptor(BLEUUID((uint16_t)0x2902))->writeValue((uint8_t*)notificationOn, 2, true);
     } else {Serial.println("We have failed to connect to the server; Restart your device to scan for nearby BLE server again.");}
     doConnect = false;
-  }*/
-  //if new CAN by BT are available, write it in CAN bus / CAN <-> Bt <-> CAN
+  }
+  //if new CAN by BT are available, write it in CAN bus / CAN <-> Bt <-> CAN and use it to control the Robot
   if (newCan){
     newCan = false;
     readDATA(); //interprete les donnees par Bt
-    writeStructInCAN(myData); 
+    writeStructInCAN(DATAtoControl); 
+    BtAvailable = true;
   }
   
 }
-
 void setupCAN(){
   while (!Serial);
-
   Serial.println("CAN Receiver ESP32-E-B");
-
   // start the CAN bus at 1000 kbps
   if (!CAN.begin(1000E3)) { //ici, nous avons modifié la bibliotheque CAN pour qu'elle soit compatible avec l'ESP32-E
     Serial.println("Starting CAN failed!");
@@ -2380,26 +2472,20 @@ void setupCAN(){
   }
   CAN.onReceive(canReadData); //init CAN callback function
 }
-
 void writeStructInCAN(const CANMessage &theDATA){
   Serial.print("Sending ");
-
   if(theDATA.extented){
     CAN.beginExtendedPacket(theDATA.ID, theDATA.ln, theDATA.RTR);
     Serial.print("extended ");
   }
   else{CAN.beginPacket(theDATA.ID, theDATA.ln, theDATA.RTR);}
-
   Serial.print("packet on CAN... ");
-
   if(!theDATA.RTR){CAN.write(theDATA.dt, theDATA.ln);}
   
   CAN.endPacket();
-
   Serial.println("done");
   Serial.println();
 }
-
 void canReadData(int packetSize){
   
   DATAtoControl.ID = CAN.packetId();
@@ -2413,7 +2499,6 @@ void canReadData(int packetSize){
   }
   canAvailable = true;
 }
-
 void canReadExtRtr(){
   if (CAN.packetExtended()){
       Serial.print("extended ");
@@ -2426,26 +2511,24 @@ void canReadExtRtr(){
   }
   else{DATAtoControl.RTR = false;}
 }
-
 void readDATA(){
   //char contenuBt[sizeof(myData)]; // taille de la structure envoyée
-
-  myData.extented = contenuBt[0];
-  myData.RTR = contenuBt[1];
-  myData.ID = contenuBt[4] + (contenuBt[5]<<8) + (contenuBt[6]<<16) + (contenuBt[7]<<24);
-  myData.ln = contenuBt[8];
+  if(canAvailable){
+  DATAtoControl.extented = contenuBt[0];
+  DATAtoControl.RTR = contenuBt[1];
+  DATAtoControl.ID = contenuBt[4] + (contenuBt[5]<<8) + (contenuBt[6]<<16) + (contenuBt[7]<<24);
+  DATAtoControl.ln = contenuBt[8];
   int i;
   for(i=0;i<8;i++)
   {
-    myData.dt[i]=contenuBt[i+9];
+    DATAtoControl.dt[i]=contenuBt[i+9];
+  }
   }
 }
-
 void remplirStruct(int idf, char lenf, char dt0f, char dt1f, char dt2f, char dt3f, char dt4f, char dt5f, char dt6f, char dt7f){
   DATArobot.RTR = false;
   if(idf>0x7FF){DATArobot.extented = true;}
   else{DATArobot.extented = false;}
-
   DATArobot.ID = idf;
   DATArobot.ln = idf;
   DATArobot.dt[0] = dt0f;
@@ -2457,32 +2540,27 @@ void remplirStruct(int idf, char lenf, char dt0f, char dt1f, char dt2f, char dt3
   DATArobot.dt[6] = dt6f;
   DATArobot.dt[7] = dt7f;
 }
-
 void CANenvoiMsg1x8Bytes(uint32_t id, void *pdata)
 {
     DATArobot.RTR = false;
     if(id>0x7FF){DATArobot.extented = true;}
     else{DATArobot.extented = false;}
-
     DATArobot.ID = id;
     DATArobot.ln = 8;
     memcpy(&DATArobot.dt, pdata, 8);
     writeStructInCAN(DATArobot);          
 }
-
 void CANenvoiMsg2x4Bytes(uint32_t id, void *pdata1, void *pdata2)
 {
     DATArobot.RTR = false;
     if(id>0x7FF){DATArobot.extented = true;}
     else{DATArobot.extented = false;}
-
     DATArobot.ID = id;
     DATArobot.ln = 8;
     memcpy(&DATArobot.dt, pdata1, 4);
     memcpy(&(DATArobot.dt[4]), pdata2, 4);
     writeStructInCAN(DATArobot);     
 }
-
 void slaveBTConnect(std::string name){
   // Create the BLE Device
   BLEDevice::init(name);
@@ -2514,7 +2592,6 @@ bool connectToServer(BLEAddress pAddress) {
   // Obtain a reference to the characteristics in the service of the remote BLE server.
   prxRemoteCharacteristic = pRemoteService->getCharacteristic(rxUUID);
   ptxRemoteCharacteristic = pRemoteService->getCharacteristic(txUUID);
-
   if (prxRemoteCharacteristic == nullptr || ptxRemoteCharacteristic == nullptr) {
     Serial.print("Failed to find our characteristic UUID");
     return false;
@@ -2526,10 +2603,7 @@ bool connectToServer(BLEAddress pAddress) {
   connected = true;
   return true;
 }
-
 //----------------------------------------------------------------------autres fonctions
-
-
 /****************************************************************************************/
 /* NOM : setupPWM                                                                       */
 /* ARGUMENT : Pins de sortie et channel des PWM                                         */
@@ -2545,9 +2619,6 @@ void setupPWM(int PWMpin, int PWMChannel)
   ledcAttachPin(PWM_MOTD, PWMDChannel);
   ledcAttachPin(PWM_MOTG, PWMGChannel);
 }
-
-
-
 void test_accel(void)//fonctionne
 {
     static int etat_test_accel = 0;
@@ -2607,9 +2678,6 @@ void test_accel(void)//fonctionne
         break;
     }
 }
-
-
-
 void asser_position(){
   double cmdD, cmdG, erreur;
   cmdD = Asser_Pos_MotD(0);
@@ -2618,13 +2686,10 @@ void asser_position(){
   write_PWMG(cmdG);
   //Serial.printf("PWMD : %lf; PWMG : %lf / ; / codeurD : %lf ; codeurG : %lf\n", cmdD, cmdG, lireCodeurD(), lireCodeurG());
 }
-
-
 void onTime() {//fonction s'exécutent à chaque interruptions 
    mscount++;
    
 }
-
 void init_Timer(){
     // Configure le Prescaler a 80 le quartz de l ESP32 est cadence a 80Mhz => à vérifier pour l'esp32-32E, peut etre 40Mhz?
    // 80000000 / 80 = 1000000 tics / seconde

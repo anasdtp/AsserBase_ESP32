@@ -8,24 +8,17 @@
 #include <BLE2902.h>
 #include <Wire.h>
 //----------------------------------------------------------------------Variables
-
-
-
 #define bleServerName "ESP32EB"
 #define peerName "ESP32EA";
 //SLAVE-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_
-
-
 /* UUID's of the service, characteristic that we want to read*/
 // BLE Service
 static BLEUUID serviceUUID("6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
 static BLEUUID      rxUUID("6E400002-B5A3-F393-E0A9-E50E24DCCA9E");
 static BLEUUID      txUUID("6E400003-B5A3-F393-E0A9-E50E24DCCA9E");
 //-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_SLAVE
-
 //Address of the peripheral device. Address will be found during scanning...
 static BLEAddress *pServerAddress;
-
 static boolean doConnect = false;
 static boolean connected = false;
 static boolean doScan = false;
@@ -35,11 +28,11 @@ static BLEAdvertisedDevice* myDevice;
 //Activate notify
 const uint8_t notificationOn[] = {0x1, 0x0};
 const uint8_t notificationOff[] = {0x0, 0x0};
-
 char* contenuBt;
 //Flags to check whether new CAN and humidity readings are available
 boolean newCan = false;
 bool canAvailable = false;
+bool BtAvailable = false;
 
 typedef struct CANMessage {
   bool extented = false;
@@ -48,25 +41,11 @@ typedef struct CANMessage {
   char ln = 0;
   unsigned char dt[8] = {0};
 } CANMessage;
-
 CANMessage myData;//data received by BT to write on CAN
 CANMessage DATAtoSend;//data received by CAN to send on BT
-
 CANMessage DATAtoControl;//data received by CAN to control the robot
 CANMessage DATArobot;//DATA that the robot will write on CAN
-
 //----------------------------------------------------------------------prototypes fonctions BLE et CAN
-
-
-static void notifyCallback(
-  BLERemoteCharacteristic* pBLERemoteCharacteristic,
-  uint8_t* pData,
-  size_t length,
-  bool isNotify);
-
-
-static void CANNotifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristic, uint8_t* pData, size_t length, bool isNotify);
-
 
 char vitesse_danger = 0, Stop_Danger = 0, asser_actif = 1, attente = 0, mode_xyt = 0,
                 finMvtElem = 0, finRecalage = 0, finRayonCourbure = 0,finRayonCourbureClo = 0, finXYT = 0,  Fin_Match = 0, Message_Fin_Mouvement = 0, explosionErreur = 0; 
@@ -75,32 +54,3 @@ int nb_ordres = 0;
 short           etat_automate = 0, etat_automate_depl = 0, new_message = 0,
                 xytheta_sens, next_move_xyt = 0, next_move = 0, i, stop = 0, stop_receive = 0, param_xytheta[3],
                 etat_automate_xytheta = 0, ralentare = 0;
-
-void CAN_ReceiveMsgX_Y_Theta(void);
-                            
-void CAN_ReceiveMsgRayon_de_courbure(void);
-                            
-void CAN_ReceiveMsgParametres(void);
-                            
-void CAN_ReceiveMsgRotation(void);
-                            
-void CAN_ReceiveMsgLigne_Droite(void);
-                            
-void CAN_ReceiveMsgCourbe_Bezier(void);
-                            
-void CAN_ReceiveMsgOdo_PR(void);
-                            
-void CAN_ReceiveMsgVitesse_PR(void);
-                            
-void CAN_ReceiveMsgOdo_GR(void);
-                            
-void CAN_ReceiveMsgVitesse_GR(void);
-                            
-void CAN_ReceiveMsgEnd_Game(void);
-                            
-void CAN_ReceiveMsgStop(void);
-                            
-void CAN_ReceiveMsgCheck(void);
-                            
-void CAN_ReceiveMsgReset(void);
-                            

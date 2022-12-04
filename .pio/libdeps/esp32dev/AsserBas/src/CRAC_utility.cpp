@@ -1,9 +1,6 @@
 /****************************************************************************************/
 /*                                   CRAC_UTILITY.Cpp                                     */
 /****************************************************************************************/
-
-
-
 /****************************************************************************************/
 /*                          Inclusion des bibliotheques                                 */
 /****************************************************************************************/
@@ -11,7 +8,6 @@
 #include "Arduino.h"
 #include <math.h>
 #include <ESP32Encoder.h>
-
 #define VIT_MAX 1740//1740 normalement
 /****************************************************************************************/
 /*                          Definition des variables                                    */
@@ -25,25 +21,19 @@ double last_Delta_ErreurPos=0, somme_Delta_ErreurPos=0, Delta_ErreurPos=0;
   
 const double DTIC = PERIMETRE_ROUE_CODEUSE / RESOLUTION_ROUE_CODEUSE; // longeur d'un tic de roue codeuse, en mm
 const double LARGEUR_ROBOT_TIC = LARGEUR_ROBOT/(PERIMETRE_ROUE_CODEUSE / RESOLUTION_ROUE_CODEUSE); // largeur du robot en tic   //c'est pour harmoniser les unités
-
 unsigned char tC1, tC2, tC3, tC4, tC5, nbexpr;
-
 BUF_CIRC_DEF(buffer_distanceG, 50);
 BUF_CIRC_DEF(buffer_distanceD, 50);
-
 ESP32Encoder EncoderD;
 ESP32Encoder EncoderG;
-
 void Encodeur_Init(){
   //ESP32Encoder::useInternalWeakPullResistors=DOWN;
 	// Enable the weak pull up resistors
 	ESP32Encoder::useInternalWeakPullResistors=UP;
-
 	// use pin 23 and 22 for the first encoder
 	EncoderD.attachHalfQuad(22, 23);
 	// use pin 39 and 36 for the second encoder
 	EncoderG.attachHalfQuad(39, 36);
-
 	// clear the encoder's raw count and set the tracked count to zero
     EncoderD.clearCount();
     EncoderG.clearCount();
@@ -65,7 +55,6 @@ void AsserInitCoefs()
     KppD = Kpp;     //0.5
     KipD = Kip*TE/0.02;   //0.001
     KdpD = Kdp/TE*0.02;     //2.5
-
     KppG = Kpp;     //0.5
     KipG = Kip*TE/0.02;  //0.001
     KdpG = Kdp/TE*0.02;     //2.5
@@ -74,7 +63,6 @@ void AsserInitCoefs()
     KipR = 0;//0.1;  //0.001
     KdpR = 0;//10;     //2.5
 }
-
 /****************************************************************************************/
 /* NOM : Assert_Init_D                                                                  */
 /* ARGUMENT : rien                                                                      */
@@ -87,7 +75,6 @@ void Asser_Init_D()
     last_ErreurPosD=0;
     Somme_ErreurPosD=0;
 }
-
 /****************************************************************************************/
 /* NOM : Assert_Init_G                                                                  */
 /* ARGUMENT : rien                                                                      */
@@ -100,7 +87,6 @@ void Asser_Init_G()
     last_ErreurPosG=0;
     Somme_ErreurPosG=0;
 }
-
 /****************************************************************************************/
 /* NOM : Assert_Init                                                                    */
 /* ARGUMENT : rien                                                                      */
@@ -119,7 +105,6 @@ void Asser_Init(void)
 /* RETOUR : rien                                                                        */
 /* DESCRIPTIF :            */
 /****************************************************************************************/
-
 void Asser_Pos_Mot(double pcons_posG, double pcons_posD, double* commandeG, double* commandeD)
 {
     static double pcons_posD_prec = 0, pcons_posG_prec = 0;
@@ -174,7 +159,6 @@ void Asser_Pos_Mot(double pcons_posG, double pcons_posD, double* commandeG, doub
     }
     *commandeD = (KppD * ErreurPosD + KipD * Somme_ErreurPosD + KdpD * Delta_ErreurPosD);        //Mise a jour de la commande moteur
     last_ErreurPosD = ErreurPosD;       //Stockage de la nouvelle erreur
-
     if(KipG>0)
     {
         if (Somme_ErreurPosG <= (-250/KipG)) 
@@ -187,9 +171,7 @@ void Asser_Pos_Mot(double pcons_posG, double pcons_posD, double* commandeG, doub
     
     
     //pcons_posD_prec = pcons_posD, pcons_posG_prec = pcons_posG;
-
 }
-
 /******************************/
 /* NOM : Asser_Pos_MotD                                                               */
 /* ARGUMENT : double pcons_pos -> position voulue exprimée en tick d'encodeur           */
@@ -215,7 +197,6 @@ double Asser_Pos_MotD(double pcons_pos)
     last_ErreurPosD = ErreurPosD;       //Stockage de la nouvelle erreur
     return commande;
 }
-
 /******************************/
 /* NOM : Asser_Pos_MotG                                                                */
 /* ARGUMENT : double pcons_pos -> position voulue exprimée en tick d'encodeur           */
@@ -241,7 +222,6 @@ double Asser_Pos_MotG(double pcons_pos)
     last_ErreurPosG = ErreurPosG;       //Stockage de la nouvelle erreur
     return commande;
 }
-
 /****************************************************************************************/
 /* NOM : lireCodeurD                                                                    */
 /* ARGUMENT : rien                                                                      */
@@ -252,8 +232,6 @@ double lireCodeurD(void)
 {
     return COEF_ROUE_DROITE*EncoderD.getCount();
 }
-
-
 /****************************************************************************************/
 /* NOM : lectureErreur                                                                  */
 /* ARGUMENT : long pcons : consigne fixée                                               */
@@ -267,7 +245,6 @@ void lectureErreur(void)
         Message_Fin_Mouvement = ASSERVISSEMENT_ERREUR;
     }
 }
-
 /****************************************************************************************/
 /* NOM : lireCodeurG                                                                    */
 /* ARGUMENT : rien                                                                      */
@@ -278,7 +255,6 @@ double lireCodeurG(void)
 {
     return COEF_ROUE_GAUCHE*EncoderG.getCount();
 }
-
 /****************************************************************************************/
 /* NOM : write_PWMD                                                                     */
 /* ARGUMENT : entier                                                                    */
@@ -310,7 +286,6 @@ void write_PWMD(int vit)
         Asser_Init();
     }*/    
 }
-
 /****************************************************************************************/
 /* NOM : write_PWMG                                                                     */
 /* ARGUMENT : entier                                                                    */
@@ -342,16 +317,13 @@ void write_PWMG(int vit)
         PWM_G_WriteCompare(vit);
         Asser_Init();
     }*/    
-
 }
-
 /***************************************************************************************
  NOM : Arret                                                                          
  ARGUMENT : void                                                                      
  RETOUR : rien                                                                        
  DESCRIPTIF : Fonction appelee pour effectuer un arret                                
 ***************************************************************************************/
-
 void Arret_Brutal(void)
 {
         Moteur_D_INA_Write(1);     
@@ -362,7 +334,6 @@ void Arret_Brutal(void)
         PWM_D_WriteCompare(0);
         Asser_Init();
 }
-
 void Arret(void)
 {    
     
@@ -370,30 +341,25 @@ void Arret(void)
     write_PWMG(0);   
     write_PWMD(0);
 }
-
 int signesDif(double v1, double v2)
 {
     return (v1>=0) != (v2>=0);
 }
-
 void Moteur_G_INA_Write(bool set){
   digitalWrite(26, set);
 }
 void Moteur_G_INB_Write(bool set){
   digitalWrite(25, set);
 }
-
 void Moteur_D_INA_Write(bool set){
   digitalWrite(16, set);
 }
 void Moteur_D_INB_Write(bool set){
   digitalWrite(15, set);
 }
-
 void PWM_D_WriteCompare(int vit){
   ledcWrite(1, vit);
 }
-
 void PWM_G_WriteCompare(int vit){
   ledcWrite(0, vit);
 }

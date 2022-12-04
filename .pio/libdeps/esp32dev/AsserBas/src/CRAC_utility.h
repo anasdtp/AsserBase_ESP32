@@ -1,13 +1,11 @@
 /****************************************************************************************/
 /*                                   CRAC_UTILITY.H                                     */
 /****************************************************************************************/
-
 /****************************************************************************************/
 /*                          Securite contre les multi-inclusions                        */
 /****************************************************************************************/
 #ifndef CRAC_UTILITYH
 #define CRAC_UTILITYH
-
 /****************************************************************************************/
 /*                          Inclusion des bibliotheques                                 */
 /****************************************************************************************/   
@@ -43,7 +41,6 @@
     
     #define F_DBUG_TEMPS_CALCUL_CLOTHO 0
     
-
     #define F_DBUG_ETAT 1
     #define F_DBUG_ETAT_DPL 1  
     #define F_DBUG_ETAT_MS 1 
@@ -51,9 +48,7 @@
 #endif    
     
 #define MOTDPIN 
-
 #define FACTEUR_DIVISION    1
-
 #define RESOLUTION_ROUE_CODEUSE 2048        
 #define RECALAGE_TH 150     //150    -- 1000    -- 512
 #define EXPLOSION_TAUX 2500
@@ -76,7 +71,6 @@
 #define TYPE_DEPLACEMENT_LIGNE_DROITE_EN 12
 #define TYPE_TRAIT_ENCH_RCV 13
 #define TYPE_DEPLACEMENT_BEZIER 14
-
  
 #define INITIALISATION 0
 #define ACCELERATION_TRAPEZE 1
@@ -88,19 +82,14 @@
 #define STOP 7
 #define TROP_D_ERREUR_ASSERV 8
 #define ARRET_STOP 9
-
 #define INIT_RECALAGE 0
 #define ACCELERATION_RECALAGE 1
 #define VITESSE_CONSTANTE_RECALAGE 2
 #define FIN_RECALAGE 3
-
 #define INIT_X_Y_THETA 0
 #define ROTATION_X_Y_THETA_1 1
 #define LIGNE_DROITE_X_Y_THETA 2
 #define ROTATION_X_Y_THETA_2 3
-
-
-
 /****************************************************************************************/
 /*                         Definition des informations du robot                         */
 /****************************************************************************************/ 
@@ -113,11 +102,8 @@
 #define Amax_coef 3000.0          // 6000       DANGER>>>>>>> chauffage micro
 #define Dmax_coef 3000.0          // 6000       DANGER>>>>>>> chauffage micro
 #define Ama_clo_coef 1500.0
-
 #define TE (TE_100US*0.0001) //soit 2.5ms
-
 void Encodeur_Init();
-
 /****************************************************************************************/
 /*                             Prototype de la fonction                                 */    
 /* NOM : write_PWMD                                                                     */
@@ -126,7 +112,6 @@ void Encodeur_Init();
 /* DESCRIPTIF : permet de choisir la vitesse du moteur 1                                */
 /****************************************************************************************/      
 void write_PWMD(int vit);
-
 /****************************************************************************************/
 /*                             Prototype de la fonction                                 */    
 /* NOM : write_PWMG                                                                     */
@@ -135,22 +120,16 @@ void write_PWMD(int vit);
 /* DESCRIPTIF : permet de choisir la vitesse du moteur 2                                */
 /****************************************************************************************/
 void write_PWMG(int vit);
-
 void Moteur_G_INA_Write(bool set);
 void Moteur_G_INB_Write(bool set);
 void Moteur_D_INA_Write(bool set);
 void Moteur_D_INB_Write(bool set);
 void PWM_D_WriteCompare(int vit);
 void PWM_G_WriteCompare(int vit);
-
 void Arret(void);
 void Arret_Brutal(void);
-
 void Asser_Pos_Mot(double pcons_posG, double pcons_posD, double* commandeG, double* commandeD);
-
 void test_accel(void);
-
-
 /****************************************************************************************/
 /* NOM : Asser_Pos_MotD                                                               */
 /* ARGUMENT : double pcons_pos -> position voulue exprimée en tick d'encodeur           */
@@ -159,7 +138,6 @@ void test_accel(void);
 /* DESCRIPTIF : Fonction appelee pour calculer la commande du moteur D                  */
 /****************************************************************************************/ 
 double Asser_Pos_MotD(double pcons_pos);
-
 /****************************************************************************************/
 /* NOM : Asser_Pos_MotG                                                                */
 /* ARGUMENT : double pcons_pos -> position voulue exprimée en tick d'encodeur           */
@@ -168,7 +146,6 @@ double Asser_Pos_MotD(double pcons_pos);
 /* DESCRIPTIF : Fonction appelee pour calculer la commande du moteur G                  */
 /****************************************************************************************/
 double Asser_Pos_MotG(double pcons_pos);
-
 double lireCodeurD();
 double lireCodeurG();
 void Asser_Init_D();
@@ -176,7 +153,6 @@ void Asser_Init_G();
 void Asser_Init();
 void AsserInitCoefs();
 int signesDif(double v1, double v2);
-
 /****************************************************************************************/
 /* NOM : lectureErreur                                                                  */
 /* ARGUMENT : void                                                                      */
@@ -184,7 +160,6 @@ int signesDif(double v1, double v2);
 /* DESCRIPTIF : permet de lire la valeur de l'encodeur droit                            */
 /****************************************************************************************/
 void lectureErreur(void);
-
 /****************************************************************************************/
 /*                          Definition de la structure deplacement                      */
 /****************************************************************************************/
@@ -199,13 +174,8 @@ struct Ordre_deplacement
     short rayon, vit_ray, theta_ray;
     double ta, tc, td; //temps d'acceleration, constant et de deceleration
 };
-
                 
                 
-
-
-
-
 /****************************************************************************************/
 /*                            Declaration des variables                                 */
 /****************************************************************************************/ 
@@ -226,33 +196,20 @@ extern char     vitesse_danger, Stop_Danger, asser_actif, attente, Fin_Match, Me
 extern int      nb_ordres;
                 
 extern struct Ordre_deplacement liste;
-
 extern double   KppD, KipD, KdpD, KppG, KipG, KdpG,                             // Valeurs des correcteurs d'asservissement pour les G moteurs
                 KppDa, KipDa, KdpDa, KppGa, KipGa, KdpGa;                       // Valeurs des correcteurs d'asservissement pour les 2 moteurs
-
-
 extern const double DTIC;   
 extern const double LARGEUR_ROBOT_TIC;                     // Valeurs des correcteurs d'asservissement pour les 2 moteurs
-
-
 extern unsigned char tC1, tC2, tC3, tC4, tC5, nbexpr;
 extern volatile uint16_t mscount , mscount1 ,  mscount2;
-
     
 extern buf_circ_t buffer_distanceG;
 extern buf_circ_t buffer_distanceD;
 extern char flagDebutBezier;
 #endif
-
-
-
-
 /****************************************************************************************/
 //Sinon, détails : les angles sont exprimés en dixièmes de degrés quand il faut faire des calculs, ou quand ils faut les transmettre en CAN
 //les distances, pareil, c'est de millimètres
 //Par contre, pour les fonctions Ligne_droite, Rotation, et asser_pos c'est exprimé en ticks d'encodeur
 /****************************************************************************************/
-
-
-
 /* [] END OF FILE */
