@@ -99,11 +99,11 @@ static void notifyCallback(
   uint8_t* pData,
   size_t length,
   bool isNotify) {
-    Serial.print("Notify callback for characteristic ");
-    Serial.print(pBLERemoteCharacteristic->getUUID().toString().c_str());
-    Serial.print(" of data length ");
+    //Serial.print("Notify callback for characteristic ");
+    //Serial.print(pBLERemoteCharacteristic->getUUID().toString().c_str());
+    //Serial.print(" of data length ");
     Serial.println(length);
-    Serial.print("data: ");
+    //Serial.print("data: ");
     Serial.println((char*)pData);
 }
 class MyClientCallback : public BLEClientCallbacks {
@@ -111,7 +111,7 @@ class MyClientCallback : public BLEClientCallbacks {
   }
   void onDisconnect(BLEClient* pclient) {
     connected = false;
-    Serial.println("onDisconnect");
+    //Serial.println("onDisconnect");
   }
 };
 //Callback function that gets called, when another device's advertisement has been received
@@ -121,7 +121,7 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
       advertisedDevice.getScan()->stop(); //Scan can be stopped, we found what we are looking for
       pServerAddress = new BLEAddress(advertisedDevice.getAddress()); //Address of advertiser is the one we need
       doConnect = true; //Set indicator, stating that we are ready to connect
-      Serial.println("Device found. Connecting!");
+      //Serial.println("Device found. Connecting!");
     }
   }
 };
@@ -133,7 +133,8 @@ void setup() {
   setupCAN();
   //Init BLE device
   slaveBTConnect("ESP32EA");
-  Serial.printf("fin ble init\n");
+  Serial.printf("fin ble init\n"); //Ne pas rajouter de Serial.printx dans le loop 
+                                  //sinon cela augmente le temps de loop on risque d'avoir un TE faux
   Encodeur_Init();
   Serial.printf("fin encodeur init\n");
   Moteur_Init();
@@ -144,9 +145,9 @@ void setup() {
   Serial.printf("fin init Timer\n");
   remplirStruct(ALIVE_MOTEUR,0,0,0,0,0,0,0,0,0);
   writeStructInCAN(DATArobot);
-  Serial.printf("envoie CAN\n");
+  Serial.printf("envoie CAN ALIVE_MOTEUR\n");
   Serial.println("fin setup\n");
-  //liste.type = TYPE_DEPLACEMENT_BEZIER;//test
+  //liste.type = TYPE_DEPLACEMENT_LIGNE_DROITE;//test
 }
 //----------------------------------------------------------------------loop
 void loop() {
@@ -198,7 +199,7 @@ void calcul(void){//fait!!
         {
             etat_prec = liste.type;
             
-            Serial.println("ID_DBUG_ETAT");
+            //Serial.println("ID_DBUG_ETAT");
             remplirStruct(ID_DBUG_ETAT, 1, etat_prec, 0,0,0,0,0,0,0);
             writeStructInCAN(DATArobot);                             //CAN
             
@@ -213,7 +214,7 @@ void calcul(void){//fait!!
         if(etat_automate_depl_prec != etat_automate_depl && etat_automate_depl != 8)
         {
             etat_automate_depl_prec = etat_automate_depl;
-            Serial.println("ID_DBUG_ETAT_DPL");
+            //Serial.println("ID_DBUG_ETAT_DPL");
             remplirStruct(ID_DBUG_ETAT_DPL, 1, etat_automate_depl_prec, 0,0,0,0,0,0,0);
             writeStructInCAN(DATArobot);                             //CAN           
         }
@@ -221,7 +222,7 @@ void calcul(void){//fait!!
        
         if (Fin_Match){
             liste.type = (TYPE_END_GAME);
-            Serial.println("INSTRUCTION_END_MOTEUR");
+            //Serial.println("INSTRUCTION_END_MOTEUR");
             //On prévient qu'on s'est arrêté
             // le dlc original était de 2 avec un 0 en second octet
             remplirStruct(INSTRUCTION_END_MOTEUR, 1, 0x04, 0,0,0,0,0,0,0);
@@ -309,7 +310,7 @@ void calcul(void){//fait!!
                 while(liste.enchainement !=2);
                 
                 #if (F_DBUG_TRAIT_ETAT)
-                Serial.println("ID_TRAIT");
+                //Serial.println("ID_TRAIT");
                 remplirStruct(ID_TRAIT, 1, 0x01, 0,0,0,0,0,0,0);
                 writeStructInCAN(DATArobot);                             //CAN
                 //CANenvoiMsg1Byte(ID_TRAIT, 1);
@@ -319,7 +320,7 @@ void calcul(void){//fait!!
                 for(compteurMvnt = 0; compteurMvnt<nb_ordres; compteurMvnt++)
                 {
                     #if (F_DBUG_TRAIT_ETAT)
-                    Serial.println("ID_TRAIT");
+                    //Serial.println("ID_TRAIT");
                     remplirStruct(ID_TRAIT, 2, 0x03, compteurMvnt,0,0,0,0,0,0);
                     writeStructInCAN(DATArobot);                             //CAN
                     ////CANenvoiMsg2x1Byte(ID_TRAIT, 3, compteurMvnt);
@@ -346,7 +347,7 @@ void calcul(void){//fait!!
                 etat_automate_depl = (INITIALISATION);
                 
                 #if (F_DBUG_TRAIT_ETAT)
-                Serial.println("ID_TRAIT");
+                //Serial.println("ID_TRAIT");
                 remplirStruct(ID_TRAIT, 1, 0x02, 0,0,0,0,0,0,0);
                 writeStructInCAN(DATArobot);                             //CAN
                 //CANenvoiMsg1Byte(ID_TRAIT, 2);
@@ -431,7 +432,7 @@ void calcul(void){//fait!!
             if(buf_circ_free_space(&buffer_distanceG) > 0)
             {
                 //L'envoi d'un ack provoque l'envoi d'une nouvelle valeur
-                Serial.println("ACKNOWLEDGE_BEZIER");
+                //Serial.println("ACKNOWLEDGE_BEZIER");
                 remplirStruct(ACKNOWLEDGE_BEZIER,0,0,0,0,0,0,0,0,0);
                 writeStructInCAN(DATArobot);
                 //CANenvoiMsg(ACKNOWLEDGE_BEZIER);
@@ -628,7 +629,7 @@ void Mouvement_Elementaire(long pcons, short vmax, short amax, short dmax, char 
             etat_automate_depl = ACCELERATION_TRIANGLE;
             posCalc = ta*vmax_tri/2 + td*vmax_tri/2;
         }
-        Serial.println("ID_DIST_TIC_GENE");
+        //Serial.println("ID_DIST_TIC_GENE");
         remplirStruct(ID_DIST_TIC_GENE, 2, (pcons&0xFF), ((pcons&0xFF00)<<8),0,0,0,0,0,0);
         writeStructInCAN(DATArobot);
         
@@ -1184,7 +1185,7 @@ void trait_Rayon_De_Courbure_Clotho(struct Ordre_deplacement* monDpl)
     int pcons, rapport;
     
     #if F_DBUG_TRAIT_ETAT_CLOTHO
-    Serial.println("ID_TRAIT_CLOTHO");
+    //Serial.println("ID_TRAIT_CLOTHO");
     remplirStruct(ID_TRAIT_CLOTHO, 1, 0x01, 0,0,0,0,0,0,0);
     writeStructInCAN(DATArobot);                             //CAN
     //CANenvoiMsg1Byte(ID_TRAIT_CLOTHO, 1);
@@ -1632,7 +1633,7 @@ void Rayon_De_Courbure_Clotho(struct Ordre_deplacement monDpl)//fait
                 cpt = 0;
                 finRayonCourbureClo = 1;
                 etat_automate_depl = INITIALISATION; 
-                Serial.println("0x002");
+                //Serial.println("0x002");
                 remplirStruct(0x002,0,0,0,0,0,0,0,0,0);
                 writeStructInCAN(DATArobot);
                 //CANenvoiMsg(0x002);
@@ -1786,7 +1787,7 @@ void X_Y_Theta(long px, long py, long ptheta, long sens, short vmax, short amax)
                 roue_drt_init = lireCodeurD();
                 roue_gch_init = lireCodeurG();
                 finMvtElem = 0;
-                Serial.println("INSTRUCTION_END_MOTEUR");
+                //Serial.println("INSTRUCTION_END_MOTEUR");
                 remplirStruct(INSTRUCTION_END_MOTEUR, 2, 0x30, 0x00,0,0,0,0,0,0);
                 writeStructInCAN(DATArobot);
                 ////CANenvoiMsg2x1Byte(INSTRUCTION_END_MOTEUR, 0x30, 0);
@@ -1805,7 +1806,7 @@ void X_Y_Theta(long px, long py, long ptheta, long sens, short vmax, short amax)
                 roue_drt_init = lireCodeurD();
                 roue_gch_init = lireCodeurG();
                 finMvtElem = 0;
-                Serial.println("INSTRUCTION_END_MOTEUR");
+                //Serial.println("INSTRUCTION_END_MOTEUR");
                 remplirStruct(INSTRUCTION_END_MOTEUR, 2, 0x40, 0x00,0,0,0,0,0,0);
                 writeStructInCAN(DATArobot);
                 ////CANenvoiMsg2x1Byte(INSTRUCTION_END_MOTEUR, 0x40, 0);
@@ -2150,7 +2151,7 @@ void Odometrie(void)//fait
     {
       mscount1 = 0;
     }*/
-    //Serial.printf("distance x : %lf et y : %lf ; angle : %lf\n", dist, ang, Odo_x, Odo_y, Odo_theta);
+    ////Serial.printf("distance x : %lf et y : %lf ; angle : %lf\n", dist, ang, Odo_x, Odo_y, Odo_theta);
         
     
 }  
@@ -2177,12 +2178,12 @@ void CANloop(){
   if(canAvailable || BtAvailable){
     canReadExtRtr();//On le me ici pour ne pas surcharger l'interruption CAN.onRecveive
     canAvailable = false; BtAvailable = false;
-    Serial.println("CAN received");
+    //Serial.println("CAN received");
     
     switch (DATAtoControl.ID)
     {
-    case ASSERVISSEMENT_REQUETE_PID:
-                Serial.println("ASSERVISSEMENT_REQUETE_PID");
+            case ASSERVISSEMENT_REQUETE_PID:
+                //Serial.println("ASSERVISSEMENT_REQUETE_PID");
                 CANenvoiMsg1x8Bytes(ASSERVISSEMENT_CONFIG_KPP, &KppD);
                 CANenvoiMsg1x8Bytes(ASSERVISSEMENT_CONFIG_KPI, &KipD);
                 CANenvoiMsg1x8Bytes(ASSERVISSEMENT_CONFIG_KPD, &KdpD);
@@ -2191,33 +2192,33 @@ void CANloop(){
             case ASSERVISSEMENT_CONFIG_KPP_DROITE:
                 memcpy(&KppD, DATAtoControl.dt, 8);
                 KppDa = KppD;
-                Serial.println("ASSERVISSEMENT_CONFIG_KPP_DROITE");
+                //Serial.println("ASSERVISSEMENT_CONFIG_KPP_DROITE");
                 break;
             case ASSERVISSEMENT_CONFIG_KPI_DROITE:
                 memcpy(&KipD, DATAtoControl.dt, 8);
                 KipDa = KipD;
-                Serial.println("ASSERVISSEMENT_CONFIG_KPI_DROITE");
+                //Serial.println("ASSERVISSEMENT_CONFIG_KPI_DROITE");
                 break;
             case ASSERVISSEMENT_CONFIG_KPD_DROITE:
                 memcpy(&KdpD, DATAtoControl.dt, 8);
                 KdpDa = KdpD;
-                Serial.println("ASSERVISSEMENT_CONFIG_KPD_DROITE");
+                //Serial.println("ASSERVISSEMENT_CONFIG_KPD_DROITE");
                 break;
                 
             case ASSERVISSEMENT_CONFIG_KPP_GAUCHE:
                 memcpy(&KppG, DATAtoControl.dt, 8);
                 KppGa = KppG;
-                Serial.println("ASSERVISSEMENT_CONFIG_KPP_GAUCHE");
+                //Serial.println("ASSERVISSEMENT_CONFIG_KPP_GAUCHE");
                 break;
             case ASSERVISSEMENT_CONFIG_KPI_GAUCHE :
                 memcpy(&KipG, DATAtoControl.dt, 8);
                 KipGa = KipG;
-                Serial.println("ASSERVISSEMENT_CONFIG_KPI_GAUCHE");
+                //Serial.println("ASSERVISSEMENT_CONFIG_KPI_GAUCHE");
                 break;
             case ASSERVISSEMENT_CONFIG_KPD_GAUCHE :
                 memcpy(&KdpG, DATAtoControl.dt, 8);
                 KdpGa = KdpG;
-                Serial.println("ASSERVISSEMENT_CONFIG_KPD_GAUCHE");
+                //Serial.println("ASSERVISSEMENT_CONFIG_KPD_GAUCHE");
                 break;
                 
             case ASSERVISSEMENT_CONFIG_KPP:
@@ -2225,21 +2226,21 @@ void CANloop(){
                 KppGa = KppG;
                 KppD = KppG;
                 KppDa = KppD;
-                Serial.println("ASSERVISSEMENT_CONFIG_KPP");
+                //Serial.println("ASSERVISSEMENT_CONFIG_KPP");
                 break;
             case ASSERVISSEMENT_CONFIG_KPI :
                 memcpy(&KipG, DATAtoControl.dt, 8);
                 KipGa = KipG;
                 KipD = KipG;
                 KipDa = KipD;
-                Serial.println("ASSERVISSEMENT_CONFIG_KPI");
+                //Serial.println("ASSERVISSEMENT_CONFIG_KPI");
                 break;
             case ASSERVISSEMENT_CONFIG_KPD :
                 memcpy(&KdpG, DATAtoControl.dt, 8);
                 KdpGa = KdpG;
                 KdpD = KdpG;
                 KdpDa = KdpD; 
-                Serial.println("ASSERVISSEMENT_CONFIG_KPD");
+                //Serial.println("ASSERVISSEMENT_CONFIG_KPD");
                 break;
             
             case ECRAN_CHOICE_COLOR :
@@ -2253,7 +2254,7 @@ void CANloop(){
                     roue_drt_init = lireCodeurD();
                     roue_gch_init = lireCodeurG();
                 }
-                Serial.println("ASSERVISSEMENT_ENABLE");
+                //Serial.println("ASSERVISSEMENT_ENABLE");
             break;
                 
             case ASSERVISSEMENT_DECEL :
@@ -2262,12 +2263,12 @@ void CANloop(){
                     VMAX = ((double)DATAtoControl.dt[0]+256*DATAtoControl.dt[1])*k;
                     DMAX = ((double)DATAtoControl.dt[2]+256*DATAtoControl.dt[3])*k*k;
                     ralentare = 1;
-                    Serial.println("ACKNOWLEDGE_MOTEUR");
+                    //Serial.println("ACKNOWLEDGE_MOTEUR");
                     remplirStruct(ACKNOWLEDGE_MOTEUR, 2, 0x19, 0,0,0,0,0,0,0);
                     writeStructInCAN(DATArobot);
                     //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x19, 0);
                 }
-                Serial.println("ASSERVISSEMENT_DECEL");
+                //Serial.println("ASSERVISSEMENT_DECEL");
             break;
             case ASSERVISSEMENT_XYT :
             {
@@ -2277,7 +2278,7 @@ void CANloop(){
                     //On vide le buffer de mouvements
                     liste = (struct Ordre_deplacement){TYPE_DEPLACEMENT_IMMOBILE,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
                     nb_ordres = 0;
-                    cpt_ordre = 0;
+                    cpt_ordre = 0;//ne sert à rien mais au cas où, au futur...
 
                     liste.x = (DATAtoControl.dt[1] << 8) | DATAtoControl.dt[0];
                     liste.y = (DATAtoControl.dt[3] << 8) | DATAtoControl.dt[2];
@@ -2286,7 +2287,7 @@ void CANloop(){
                     liste.type = TYPE_DEPLACEMENT_X_Y_THETA;
                     liste.vmax = VMAX;
                     liste.amax = AMAX;        
-                    Serial.println("ACKNOWLEDGE_MOTEUR");
+                    //Serial.println("ACKNOWLEDGE_MOTEUR");
                     remplirStruct(ACKNOWLEDGE_MOTEUR, 2, 0x20, 0,0,0,0,0,0,0);
                     writeStructInCAN(DATArobot);    
                     //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x20, 0);
@@ -2318,7 +2319,7 @@ void CANloop(){
             
                     if(enchainement == (2 || 1)) // ERREUR ?!?
                     {
-                        Serial.println("ACKNOWLEDGE_MOTEUR");
+                        //Serial.println("ACKNOWLEDGE_MOTEUR");
                         remplirStruct(ACKNOWLEDGE_MOTEUR, 2, 0x21, 0,0,0,0,0,0,0);
                         writeStructInCAN(DATArobot);
                         //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x21, 0 /* enchainement<<3 */);                
@@ -2336,7 +2337,7 @@ void CANloop(){
                     liste.vmax = VMAX;
                     liste.amax = AMAX;
                     liste.enchainement = enchainement;
-                    Serial.println("ACKNOWLEDGE_MOTEUR");
+                    //Serial.println("ACKNOWLEDGE_MOTEUR");
                     remplirStruct(ACKNOWLEDGE_MOTEUR, 2, 0x21, 0,0,0,0,0,0,0);
                     writeStructInCAN(DATArobot);
                     //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x21, 0);
@@ -2359,7 +2360,7 @@ void CANloop(){
                 liste.angle = LARGEUR_ROBOT * M_PI * RESOLUTION_ROUE_CODEUSE * angle / (3600 * PERIMETRE_ROUE_CODEUSE);
                 liste.vmax = VMAX;
                 liste.amax = AMAX;
-                Serial.println("ACKNOWLEDGE_MOTEUR");
+                //Serial.println("ACKNOWLEDGE_MOTEUR");
                 remplirStruct(ACKNOWLEDGE_MOTEUR, 2, 0x23, 0,0,0,0,0,0,0);
                 writeStructInCAN(DATArobot);
                 //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x23, 0);
@@ -2389,7 +2390,7 @@ void CANloop(){
                 if(buf_circ_free_space(&buffer_distanceG) > 0)
                 {
                     //L'envoi d'un ack provoque l'envoi d'une nouvelle valeur
-                    Serial.println("ACKNOWLEDGE_BEZIER");
+                    //Serial.println("ACKNOWLEDGE_BEZIER");
                     remplirStruct(ACKNOWLEDGE_BEZIER,0,0,0,0,0,0,0,0,0);
                     writeStructInCAN(DATArobot);
                     //CANenvoiMsg(ACKNOWLEDGE_BEZIER);
@@ -2403,7 +2404,7 @@ void CANloop(){
             {
                 /* `#START MESSAGE_Stop_RECEIVED` */
                 stop_receive = 1;
-                Serial.println("ACKNOWLEDGE_MOTEUR");
+                //Serial.println("ACKNOWLEDGE_MOTEUR");
                 remplirStruct(ACKNOWLEDGE_MOTEUR, 2, 0x01, 0,0,0,0,0,0,0);
                 writeStructInCAN(DATArobot);
                 //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x01, 0);
@@ -2419,7 +2420,7 @@ void CANloop(){
             {
                 /* `#START MESSAGE_Check_RECEIVED` */
                 attente = 1;
-                Serial.println("ALIVE_MOTEUR");
+                //Serial.println("ALIVE_MOTEUR");
                 remplirStruct(ALIVE_MOTEUR, 0, 0, 0,0,0,0,0,0,0);
                 writeStructInCAN(DATArobot);
                 //CANenvoiMsg(ALIVE_MOTEUR);
@@ -2464,7 +2465,7 @@ void CANloop(){
 }
 void setupCAN(){
   while (!Serial);
-  Serial.println("CAN Receiver ESP32-E-B");
+  Serial.println("Base Roulante de Anas Le bg/dg");
   // start the CAN bus at 1000 kbps
   if (!CAN.begin(1000E3)) { //ici, nous avons modifié la bibliotheque CAN pour qu'elle soit compatible avec l'ESP32-E
     Serial.println("Starting CAN failed!");
@@ -2473,17 +2474,19 @@ void setupCAN(){
   CAN.onReceive(canReadData); //init CAN callback function
 }
 void writeStructInCAN(const CANMessage &theDATA){
-  Serial.print("Sending ");
+  //Serial.print("Sending ");
   if(theDATA.extented){
     CAN.beginExtendedPacket(theDATA.ID, theDATA.ln, theDATA.RTR);
     Serial.print("extended ");
   }
   else{CAN.beginPacket(theDATA.ID, theDATA.ln, theDATA.RTR);}
-  Serial.print("packet on CAN... ");
+  //Serial.print("packet on CAN...");
   if(!theDATA.RTR){CAN.write(theDATA.dt, theDATA.ln);}
   
   CAN.endPacket();
-  Serial.println("done");
+  Serial.print(" ID : 0x");
+  Serial.print(theDATA.ID, HEX);
+  Serial.println(" done");
   Serial.println();
 }
 void canReadData(int packetSize){
@@ -2501,12 +2504,12 @@ void canReadData(int packetSize){
 }
 void canReadExtRtr(){
   if (CAN.packetExtended()){
-      Serial.print("extended ");
+      //Serial.print("extended ");
       DATAtoControl.extented = true;
   }else{DATAtoControl.extented = false;}
   if (CAN.packetRtr()){
       // Remote transmission request, packet contains no DATAtoControl.dt
-      Serial.print("RTR ");
+      //Serial.print("RTR ");
       DATAtoControl.RTR = true;
   }
   else{DATAtoControl.RTR = false;}
@@ -2584,7 +2587,7 @@ bool connectToServer(BLEAddress pAddress) {
   // Obtain a reference to the service we are after in the remote BLE server.
   BLERemoteService* pRemoteService = pClient->getService(serviceUUID);
   if (pRemoteService == nullptr) {
-    Serial.print("Failed to find our service UUID: ");
+    //Serial.print("Failed to find our service UUID: ");
     Serial.println(serviceUUID.toString().c_str());
     return (false);
   }
@@ -2593,7 +2596,7 @@ bool connectToServer(BLEAddress pAddress) {
   prxRemoteCharacteristic = pRemoteService->getCharacteristic(rxUUID);
   ptxRemoteCharacteristic = pRemoteService->getCharacteristic(txUUID);
   if (prxRemoteCharacteristic == nullptr || ptxRemoteCharacteristic == nullptr) {
-    Serial.print("Failed to find our characteristic UUID");
+    //Serial.print("Failed to find our characteristic UUID");
     return false;
   }
   Serial.println(" - Found our characteristics");
@@ -2638,7 +2641,7 @@ void test_accel(void)//fonctionne
         posG = lireCodeurG();      //Recuperation de la valeur du compteur incrémental
         
         accel_test = posG - lposG;
-        Serial.printf("accel test : %lf\n", accel_test);
+        //Serial.printf("accel test : %lf\n", accel_test);
         DATArobot.ID = ID_TEST_VITESSE;
         DATArobot.dt[0] = accel_test;
         DATArobot.ln = 1;
@@ -2665,7 +2668,7 @@ void test_accel(void)//fonctionne
         posG = lireCodeurG();      //Recuperation de la valeur du compteur incrémental
         
         accel_test = posG - lposG;
-        Serial.printf("accel test : %lf\n", accel_test);
+        //Serial.printf("accel test : %lf\n", accel_test);
         DATArobot.ID = ID_TEST_VITESSE;
         DATArobot.dt[0] = accel_test;
         DATArobot.ln = 1;
@@ -2684,7 +2687,7 @@ void asser_position(){
   cmdG = Asser_Pos_MotG(0);
   write_PWMD(cmdD);
   write_PWMG(cmdG);
-  //Serial.printf("PWMD : %lf; PWMG : %lf / ; / codeurD : %lf ; codeurG : %lf\n", cmdD, cmdG, lireCodeurD(), lireCodeurG());
+  ////Serial.printf("PWMD : %lf; PWMG : %lf / ; / codeurD : %lf ; codeurG : %lf\n", cmdD, cmdG, lireCodeurD(), lireCodeurG());
 }
 void onTime() {//fonction s'exécutent à chaque interruptions 
    mscount++;
