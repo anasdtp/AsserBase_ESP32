@@ -170,5 +170,4 @@
  .pio/libdeps/esp32dev/AsserBas/src/CRAC_utility.h \
  .pio/libdeps/esp32dev/AsserBas/src/ident_crac.h \
  .pio/libdeps/esp32dev/AsserBas/src/buffer_circulaire.h \
- .pio/libdeps/esp32dev/AsserBas/src/clotho.h \
- .pio/libdeps/esp32dev/AsserBas/src/TimerAsser.h
+ .pio/libdeps/esp32dev/AsserBas/src/clotho.h

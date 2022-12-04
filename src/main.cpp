@@ -5,7 +5,6 @@
 #include "ident_crac.h"
 #include "buffer_circulaire.h"
 #include "clotho.h"
-#include "TimerAsser.h"
 //----------------------------------------------------------------------Variables
 bool set = false;
 int inApin_MOTD = 16; // INA2 checked
@@ -55,7 +54,15 @@ int nbValeurs = 0;
 /****************************************************************************************/ 
 struct Ordre_deplacement liste;
 clothoStruc maClotho;
-
+//----------------------------------------------------------------------Timer
+static char idTimer = 0; //le numéro du Timer de 0 à 3
+static int prescaler = 8000; // la valeur du diviseur de temps
+bool flag = true; //vrai pour compter sur le front montant, faux pour compter sur le front descendant
+int totalInterrupts = 0;   // compte le nombre de declenchement de l alarme
+hw_timer_t * timer = NULL;
+portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
+void init_Timer();
+void onTime();//prototype de la fonction s'exécutent à chaque interruptions
 //----------------------------------------------------------------------prototypes fonctions Asservissement (dans l'ordre (enfin je crois))
 void calcul(void);
 void Mouvement_Elementaire(long pcons, short vmax, short amax, short dmax, char mvt);
@@ -2681,4 +2688,18 @@ void asser_position(){
   write_PWMD(cmdD);
   write_PWMG(cmdG);
   ////Serial.printf("PWMD : %lf; PWMG : %lf / ; / codeurD : %lf ; codeurG : %lf\n", cmdD, cmdG, lireCodeurD(), lireCodeurG());
+}
+void onTime() {//fonction s'exécutent à chaque interruptions 
+   mscount++;
+   
+}
+void init_Timer(){
+    // Configure le Prescaler a 80 le quartz de l ESP32 est cadence a 80Mhz => à vérifier pour l'esp32-32E, peut etre 40Mhz?
+   // 80000000 / 80 = 1000000 tics / seconde
+   timer = timerBegin(idTimer, prescaler, flag);                
+   timerAttachInterrupt(timer, &onTime, true);//fait qu'on execute la fonction onTime à chaque interruptions
+    
+   // Regle le declenchement d une alarme chaque seconde
+   timerAlarmWrite(timer, 1, true);      //freq de 250 000 Hz    
+   timerAlarmEnable(timer); //active l'alarme
 }
