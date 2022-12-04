@@ -3,6 +3,18 @@
 /****************************************************************************************/
 #include "TimerAsser.h"
 
+
+static char idTimer = 0; //le numéro du Timer de 0 à 3
+static int prescaler = 80; // la valeur du diviseur de temps
+bool flag = true; //vrai pour compter sur le front montant, faux pour compter sur le front descendant
+
+
+
+
+
+hw_timer_t * timer = NULL;
+portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
+
 void onTime() {//fonction s'exécutent à chaque interruptions 
    mscount++;
 }

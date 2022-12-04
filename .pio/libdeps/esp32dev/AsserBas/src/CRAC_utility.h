@@ -12,7 +12,6 @@
 #include <Arduino.h>
 #include "ident_crac.h"
 #include "buffer_circulaire.h"
-//#include "clotho.h"
 /****************************************************************************************/
 /*                          Constantes de preprocesseur                                 */
 /****************************************************************************************/    
