@@ -132,7 +132,7 @@ void setup() {
   Serial.begin(115200);
   setupCAN();
   //Init BLE device
-  slaveBTConnect("ESP32EA");
+  slaveBTConnect("BaseRoulante");
   Serial.printf("fin ble init\n"); //Ne pas rajouter de Serial.printx dans le loop 
                                   //sinon cela augmente le temps de loop on risque d'avoir un TE faux
   Encodeur_Init();
@@ -147,13 +147,17 @@ void setup() {
   writeStructInCAN(DATArobot);
   Serial.printf("envoie CAN ALIVE_MOTEUR\n");
   Serial.println("fin setup\n");
-  //liste.type = TYPE_DEPLACEMENT_LIGNE_DROITE;//test
+  liste.type = TYPE_DEPLACEMENT_IMMOBILE;//test
 }
 //----------------------------------------------------------------------loop
 void loop() {
   CANloop();
   calcul();
+  //asser_position();
   Odometrie();
+  
+  
+  
   if (mscount >= (TE_100US)) 
   {   
     Serial.println("erreur temp calcul");
@@ -244,8 +248,8 @@ void calcul(void){//fait!!
             case (TYPE_DEPLACEMENT_IMMOBILE):{
             cmdD = Asser_Pos_MotD(roue_drt_init);
             cmdG = Asser_Pos_MotG(roue_gch_init);
-            write_PWMD(cmdD);
-            write_PWMG(cmdG);   
+            write_PWMD(cmdG);
+            write_PWMG(cmdD);   
             break;
             }            
             case (TYPE_DEPLACEMENT_LIGNE_DROITE):{
@@ -2144,14 +2148,14 @@ void Odometrie(void)//fait
     //Stockage de la derniere valeur de l'odometrie
     Odo_last_val_pos_D = Odo_val_pos_D;
     Odo_last_val_pos_G = Odo_val_pos_G;
-    //mscount1 ++;
+    mscount1 ++;
         
-    /*/Condition d'envoi des informations de l'odometrie par CAN 
-    if(mscount1 >= (500/TE_100US))
+    //Condition d'envoi des informations de l'odometrie par CAN 
+    if(mscount1 >= (500/TE_100US))//toutes les 50ms
     {
       mscount1 = 0;
-    }*/
-    ////Serial.printf("distance x : %lf et y : %lf ; angle : %lf\n", dist, ang, Odo_x, Odo_y, Odo_theta);
+    }
+    //Serial.printf("Codeur D : %lf ; Codeur G : %lf\n", Odo_val_pos_D, Odo_val_pos_G);
         
     
 }  
@@ -2683,8 +2687,7 @@ void test_accel(void)//fonctionne
 }
 void asser_position(){
   double cmdD, cmdG, erreur;
-  cmdD = Asser_Pos_MotD(0);
-  cmdG = Asser_Pos_MotG(0);
+  Asser_Pos_Mot(0, 0, &cmdG, &cmdD);
   write_PWMD(cmdD);
   write_PWMG(cmdG);
   ////Serial.printf("PWMD : %lf; PWMG : %lf / ; / codeurD : %lf ; codeurG : %lf\n", cmdD, cmdG, lireCodeurD(), lireCodeurG());

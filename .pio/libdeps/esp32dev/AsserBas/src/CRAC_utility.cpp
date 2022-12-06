@@ -31,9 +31,9 @@ void Encodeur_Init(){
 	// Enable the weak pull up resistors
 	ESP32Encoder::useInternalWeakPullResistors=UP;
 	// use pin 23 and 22 for the first encoder
-	EncoderD.attachHalfQuad(22, 23);
+	EncoderD.attachSingleEdge(39, 36);
 	// use pin 39 and 36 for the second encoder
-	EncoderG.attachHalfQuad(39, 36);
+	EncoderG.attachSingleEdge(22, 23);
 	// clear the encoder's raw count and set the tracked count to zero
     EncoderD.clearCount();
     EncoderG.clearCount();
@@ -48,13 +48,13 @@ void Encodeur_Init(){
 void AsserInitCoefs()
 {
     //Coefficients de correction de l'asservissement
-    Kpp = 8;//0.9     //0.4 0.5  //plus grand = roue qui forcent plus pour revenir //2 avant
-    Kip = 0;//0.0007; le 7 juin 2021  //.0001;   //0.0007 0.0005 // suppression de Ki pour tests de reset //0 avant
+    Kpp = 2;//0.9     //0.4 0.5  //plus grand = roue qui forcent plus pour revenir //2 avant
+    Kip = 0.001;//0.0007; le 7 juin 2021  //.0001;   //0.0007 0.0005 // suppression de Ki pour tests de reset //0 avant
     Kdp = 2;     //0.1 0.5     //plus grand = asservissement plus dur //2 avant
        
     KppD = Kpp;     //0.5
     KipD = Kip*TE/0.02;   //0.001
-    KdpD = Kdp/TE*0.02;     //2.5
+    KdpD = Kdp/TE*(1/320);     //2.5 /0.02
     KppG = Kpp;     //0.5
     KipG = Kip*TE/0.02;  //0.001
     KdpG = Kdp/TE*0.02;     //2.5
@@ -358,9 +358,9 @@ void Moteur_D_INB_Write(bool set){
   digitalWrite(15, set);
 }
 void PWM_D_WriteCompare(int vit){
-  ledcWrite(1, vit);
+  ledcWrite(1, vit*1000/VIT_MAX);
 }
 void PWM_G_WriteCompare(int vit){
-  ledcWrite(0, vit);
+  ledcWrite(0, vit*1000/VIT_MAX);
 }
 /* [] END OF FILE */

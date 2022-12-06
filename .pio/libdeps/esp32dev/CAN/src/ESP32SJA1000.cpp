@@ -1,6 +1,9 @@
 // Copyright (c) Sandeep Mistry. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+//#define ESP32D
+#define ESP32E
+
 #ifdef ARDUINO_ARCH_ESP32
 
 #include "esp_intr.h"
@@ -71,6 +74,7 @@ int ESP32SJA1000Class::begin(long baudRate)
   modifyRegister(REG_BTR1, 0x70, 0x10); // TSEG2 = 1
 
   switch (baudRate) {
+#ifdef ESP32D
     case (long)1000E3:
       modifyRegister(REG_BTR1, 0x0f, 0x04);
       modifyRegister(REG_BTR0, 0x3f, 4);
@@ -80,51 +84,23 @@ int ESP32SJA1000Class::begin(long baudRate)
       modifyRegister(REG_BTR1, 0x0f, 0x0c);
       modifyRegister(REG_BTR0, 0x3f, 4);
       break;
+#endif
+#ifdef ESP32E
+    case (long)1000E3:
+      modifyRegister(REG_BTR1, 0x0f, 0x01);
+      modifyRegister(REG_BTR0, 0x3f, 3);
+      break;
+    case (long)500E3:
+      modifyRegister(REG_BTR1, 0x0f, 0x04);
+      modifyRegister(REG_BTR0, 0x3f, 4);
+      break;
 
     case (long)250E3:
       modifyRegister(REG_BTR1, 0x0f, 0x0c);
-      modifyRegister(REG_BTR0, 0x3f, 9);
+      modifyRegister(REG_BTR0, 0x3f, 4);
       break;
-
-    case (long)200E3:
-      modifyRegister(REG_BTR1, 0x0f, 0x0c);
-      modifyRegister(REG_BTR0, 0x3f, 12);
-      break;
-
-    case (long)125E3:
-      modifyRegister(REG_BTR1, 0x0f, 0x0c);
-      modifyRegister(REG_BTR0, 0x3f, 19);
-      break;
-
-    case (long)100E3:
-      modifyRegister(REG_BTR1, 0x0f, 0x0c);
-      modifyRegister(REG_BTR0, 0x3f, 24);
-      break;
-
-    case (long)80E3:
-      modifyRegister(REG_BTR1, 0x0f, 0x0c);
-      modifyRegister(REG_BTR0, 0x3f, 30);
-      break;
-
-    case (long)50E3:
-      modifyRegister(REG_BTR1, 0x0f, 0x0c);
-      modifyRegister(REG_BTR0, 0x3f, 49);
-      break;
-
-    case (long)40E3:
-      modifyRegister(REG_BTR1, 0x0f, 0x0c);
-      modifyRegister(REG_BTR0, 0x3f, 62);
-      break;
-
-    case (long)20E3:
-      modifyRegister(REG_BTR1, 0x0f, 0x0c);
-      modifyRegister(REG_BTR0, 0x3f, 124);
-      break;
-
-    case (long)10E3:
-      modifyRegister(REG_BTR1, 0x0f, 0x0c);
-      modifyRegister(REG_BTR0, 0x3f, 249);
-      break;
+#endif
+    
 
     default:
       return 0;
