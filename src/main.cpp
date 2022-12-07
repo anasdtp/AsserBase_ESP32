@@ -18,10 +18,7 @@ int inApin_MOTG = 26; // INA1 checked
 int inBpin_MOTD = 15; // INB2 checked
 int inBpin_MOTG = 25; // INB1 checked
   // PWM moteur
-int PWM_MOTD = 18;    // PIN18
-int PWM_MOTG = 17;    
-int PWMDChannel = 3;
-int PWMGChannel = 2;
+
 int joyMot = 500;
 double erreur = 3;
 /****************************************************************************************/
@@ -46,7 +43,7 @@ double consigne_posG = 0, consigne_posD = 0;
 float distanceG = 0, distanceD = 0;
 char flagDebutBezier = 0;
 int nbValeurs = 0;
-
+int nbprint = 0;
 
 
                 
@@ -84,16 +81,8 @@ void X_Y_Theta(long px, long py, long ptheta, long sens, short vmax, short amax)
 void Recalage(int pcons, short vmax, short amax, short dir, short nv_val);
 int Courbe_bezier(double distanceG, double distanceD);
 void Odometrie(void);
-
-
-//temporaire, pour test
-
-void asser_position(); 
-int commande_mot_droit_0(void);
-void Mot_droit_0(void);
-int commande_mot_gauche_0(void);
-void Mot_gauche_0(void);
-
+void Moteur_Init();
+void setupPWM(int PWMpin, int PWMChannel);
 
 //----------------------------------------------------------------------prototypes fonctions BLE et CAN
 void setupCAN();
@@ -107,32 +96,31 @@ void readDATA();
 void remplirStruct(int id, char len, char dt0, char dt1, char dt2, char dt3, char dt4, char dt5, char dt6, char dt7);
 void CANenvoiMsg1x8Bytes(uint32_t id, void *pdata);
 void CANenvoiMsg2x4Bytes(uint32_t id, void *pdata1, void *pdata2);
+void remplirStruct2x4Bytes(uint32_t id, void *pdata1, void *pdata2);
 //----------------------------------------------------------------------callback fonctions
-static void CANNotifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristic, uint8_t* pData, size_t length, bool isNotify) {
-  //store can value
-  contenuBt = (char*)pData;
-  newCan = true;
-}
 static void notifyCallback(
   BLERemoteCharacteristic* pBLERemoteCharacteristic,
   uint8_t* pData,
   size_t length,
   bool isNotify) {
-    //Serial.print("Notify callback for characteristic ");
-    //Serial.print(pBLERemoteCharacteristic->getUUID().toString().c_str());
-    //Serial.print(" of data length ");
+    Serial.print("Notify callback for characteristic ");
+    Serial.print(pBLERemoteCharacteristic->getUUID().toString().c_str());
+    Serial.print(" of data length ");
     Serial.println(length);
-    //Serial.print("data: ");
+    Serial.print("data: ");
     Serial.println((char*)pData);
 }
+
 class MyClientCallback : public BLEClientCallbacks {
   void onConnect(BLEClient* pclient) {
   }
+
   void onDisconnect(BLEClient* pclient) {
     connected = false;
-    //Serial.println("onDisconnect");
+    Serial.println("onDisconnect");
   }
 };
+
 //Callback function that gets called, when another device's advertisement has been received
 class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
   void onResult(BLEAdvertisedDevice advertisedDevice) {
@@ -140,12 +128,18 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
       advertisedDevice.getScan()->stop(); //Scan can be stopped, we found what we are looking for
       pServerAddress = new BLEAddress(advertisedDevice.getAddress()); //Address of advertiser is the one we need
       doConnect = true; //Set indicator, stating that we are ready to connect
-      //Serial.println("Device found. Connecting!");
+      Serial.println("Device found. Connecting!");
     }
   }
 };
-void Moteur_Init();
-void setupPWM(int PWMpin, int PWMChannel);
+
+
+static void CANNotifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristic, uint8_t* pData, size_t length, bool isNotify) {
+  //store can value
+  contenuBt = (char*)pData;
+  newCan = true;
+}
+
 //----------------------------------------------------------------------SETUP
 void setup() {
   Serial.begin(115200);
@@ -166,19 +160,15 @@ void setup() {
   writeStructInCAN(DATArobot);
   Serial.printf("envoie CAN ALIVE_MOTEUR\n");
   Serial.println("fin setup\n");
-  liste.type = TYPE_DEPLACEMENT_IMMOBILE;//test
+  //liste.type = TYPE_DEPLACEMENT_IMMOBILE;//test
 }
 //----------------------------------------------------------------------loop
 void loop() {
   CANloop();
-  //calcul();
-  asser_position();
-  //Odometrie();
+  calcul();
+  Odometrie();
   
   //test du moteur droit ainsi que de son asservissement par la roue encodeuse droite
-  
-  
-  
   
   if (mscount >= (TE_100US)) 
   {   
@@ -186,6 +176,10 @@ void loop() {
     Serial.println(mscount);
     remplirStruct(ERREUR_TEMP_CALCUL,2, mscount,TE_100US,0,0,0,0,0,0);
     writeStructInCAN(DATArobot);
+    if (connected){
+        prxRemoteCharacteristic->writeValue((uint8_t *)&DATArobot, sizeof(DATArobot));
+    //Serial.println("Sending via BT...");
+    }else{if(!nbprint){Serial.println("The device is not connected"); nbprint ++;}}
   }
   else 
   {
@@ -228,10 +222,18 @@ void calcul(void){//fait!!
             //Serial.println("ID_DBUG_ETAT");
             remplirStruct(ID_DBUG_ETAT, 1, etat_prec, 0,0,0,0,0,0,0);
             writeStructInCAN(DATArobot);                             //CAN
+            if (connected){
+            prxRemoteCharacteristic->writeValue((uint8_t *)&DATArobot, sizeof(DATArobot));
+            //Serial.println("Sending via BT...");
+            }else{if(!nbprint){Serial.println("The device is not connected"); nbprint ++;}}
             
             #if F_DBUG_ETAT_DPL
             remplirStruct(ID_DBUG_ETAT_DPL, 1, etat_automate_depl, 0,0,0,0,0,0,0);
             writeStructInCAN(DATArobot);                             //CAN
+            if (connected){
+            prxRemoteCharacteristic->writeValue((uint8_t *)&DATArobot, sizeof(DATArobot));
+            //Serial.println("Sending via BT...");
+            }else{if(!nbprint){Serial.println("The device is not connected"); nbprint ++;}}
             #endif
         }
         #endif
@@ -270,8 +272,8 @@ void calcul(void){//fait!!
             case (TYPE_DEPLACEMENT_IMMOBILE):{
             cmdD = Asser_Pos_MotD(roue_drt_init);
             cmdG = Asser_Pos_MotG(roue_gch_init);
-            write_PWMD(cmdG);
-            write_PWMG(cmdD);   
+            write_PWMD(cmdD);
+            write_PWMG(cmdG);   
             break;
             }            
             case (TYPE_DEPLACEMENT_LIGNE_DROITE):{
@@ -2175,8 +2177,14 @@ void Odometrie(void)//fait
     //Condition d'envoi des informations de l'odometrie par CAN 
     if(mscount1 >= (500/TE_100US))//toutes les 50ms
     {
-        Serial.println();
-        Serial.printf("Codeur D : %lf ; Codeur G : %lf erreur : %lf\n", Odo_val_pos_D, Odo_val_pos_G, erreur);
+        //Serial.println();
+        //Serial.printf("Codeur D : %lf ; Codeur G : %lf erreur : %lf\n", Odo_val_pos_D, Odo_val_pos_G, erreur);
+        if (connected)
+        {
+            remplirStruct2x4Bytes(ODOMETRIE_BIG_POSITION, &dist, &ang);
+            //prxRemoteCharacteristic->writeValue((uint8_t *)&DATArobot, sizeof(DATArobot));
+            //Serial.println("Sending via BT...");
+        }else{if(!nbprint){Serial.println("The device is not connected"); nbprint ++;}}
         mscount1 = 0;
     }
     
@@ -2487,6 +2495,7 @@ void CANloop(){
     newCan = false;
     readDATA(); //interprete les donnees par Bt
     writeStructInCAN(DATAtoControl); 
+    Serial.println(DATAtoControl.ID);
     BtAvailable = true;
   }
   
@@ -2521,6 +2530,7 @@ void canReadData(int packetSize){
   
   DATAtoControl.ID = CAN.packetId();
   DATAtoControl.ln = CAN.packetDlc();
+  Serial.printf("Received CAN, ID : %d ; len : %d", DATAtoControl.ID, DATAtoControl.ln);
   // only print packet DATAtoControl.dt for non-RTR packets
   int i = 0;
   while (CAN.available())
@@ -2548,6 +2558,7 @@ void readDATA(){
   DATAtoControl.extented = contenuBt[0];
   DATAtoControl.RTR = contenuBt[1];
   DATAtoControl.ID = contenuBt[4] + (contenuBt[5]<<8) + (contenuBt[6]<<16) + (contenuBt[7]<<24);
+  Serial.println(contenuBt[4]);
   DATAtoControl.ln = contenuBt[8];
   int i;
   for(i=0;i<8;i++)
@@ -2591,6 +2602,15 @@ void CANenvoiMsg2x4Bytes(uint32_t id, void *pdata1, void *pdata2)
     memcpy(&DATArobot.dt, pdata1, 4);
     memcpy(&(DATArobot.dt[4]), pdata2, 4);
     writeStructInCAN(DATArobot);     
+}
+void remplirStruct2x4Bytes(uint32_t id, void *pdata1, void *pdata2){
+    DATArobot.RTR = false;
+    if(id>0x7FF){DATArobot.extented = true;}
+    else{DATArobot.extented = false;}
+    DATArobot.ID = id;
+    DATArobot.ln = 8;
+    memcpy(&DATArobot.dt, pdata1, 4);
+    memcpy(&(DATArobot.dt[4]), pdata2, 4);
 }
 void slaveBTConnect(std::string name){
   // Create the BLE Device
@@ -2709,14 +2729,7 @@ void test_accel(void)//fonctionne
         break;
     }
 }
-void asser_position(){
-  double cmdD, cmdG, erreur;
-  Asser_Pos_Mot(0, 0, &cmdD, &cmdG);
-  write_PWMD(cmdD);
-  write_PWMG(cmdG);
-  //if(mscount1 >= (499/TE_100US)){Serial.printf("PWMD : %lf; PWMG : %lf \n", cmdD, cmdG);}
-  Serial.printf("PWMD : %lf; PWMG : %lf / ; / codeurD : %lf ; codeurG : %lf\n", cmdD, cmdG, lireCodeurD(), lireCodeurG());
-}
+
 void onTime() {//fonction s'exécutent à chaque interruptions 
    mscount++;
    
@@ -2724,7 +2737,7 @@ void onTime() {//fonction s'exécutent à chaque interruptions
 void init_Timer(){
     // Configure le Prescaler a 80 le quartz de l ESP32 est cadence a 80Mhz => à vérifier pour l'esp32-32E, peut etre 40Mhz?
    // 80000000 / 80 = 1000000 tics / seconde
-   timer = timerBegin(idTimer, prescaler, flag);                
+   timer = timerBegin(idTimer, prescaler, flag);
    timerAttachInterrupt(timer, &onTime, true);//fait qu'on execute la fonction onTime à chaque interruptions
     
    // Regle le declenchement d une alarme chaque seconde

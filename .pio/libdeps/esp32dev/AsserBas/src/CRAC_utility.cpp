@@ -8,7 +8,7 @@
 #include "Arduino.h"
 #include <math.h>
 #include <ESP32Encoder.h>
-#define VIT_MAX 1740//1740 normalement
+
 /****************************************************************************************/
 /*                          Definition des variables                                    */
 /****************************************************************************************/
@@ -31,9 +31,9 @@ void Encodeur_Init(){
 	// Enable the weak pull up resistors
 	ESP32Encoder::useInternalWeakPullResistors=UP;
 	// use pin 23 and 22 for the first encoder
-	EncoderDroite.attachSingleEdge(39, 36);
+	EncoderDroite.attachFullQuad(39, 36);
 	// use pin 39 and 36 for the second encoder
-	EncoderGauche.attachSingleEdge(22, 23);
+	EncoderGauche.attachFullQuad(22, 23);
 	// clear the encoder's raw count and set the tracked count to zero
     EncoderDroite.clearCount();
     EncoderGauche.clearCount();
@@ -48,9 +48,9 @@ void Encodeur_Init(){
 void AsserInitCoefs()
 {
     //Coefficients de correction de l'asservissement
-    Kpp = 0.9; //0.9 le 07 décembre                                             //0.9     //0.4 0.5  //plus grand = roue qui forcent plus pour revenir //2 avant
+    Kpp = 2; //0.9 le 07 décembre                                             //0.9     //0.4 0.5  //plus grand = roue qui forcent plus pour revenir //2 avant
     Kip = 0.0001;  //0 le 07 décembre                                              //0.0007; le 7 juin 2021  //.0001;   //0.0007 0.0005 // suppression de Ki pour tests de reset //0 avant
-    Kdp = 0.15; ////0.1 le 07 décembre                                             //0.1 0.5     //plus grand = asservissement plus dur //2 avant
+    Kdp = 00; ////0.1 le 07 décembre                                             //0.1 0.5     //plus grand = asservissement plus dur //2 avant
        
     KppD = Kpp;     //0.5
     KipD = Kip*TE/0.02;   //0.001
@@ -261,22 +261,22 @@ double lireCodeurG(void)
 /* RETOUR : rien                                                                        */
 /* DESCRIPTIF : permet de choisir la vitesse du moteur 1                                */
 /****************************************************************************************/
-void write_PWMD(int vit)
+void write_PWMD(double vitD)
 {
-    if(vit >= 0)                    //Mode Avancer 
+    if(vitD >= 0)                    //Mode Avancer 
     {
         Moteur_D_INA_Write(1);      
         Moteur_D_INB_Write(0);
-        if(vit > VIT_MAX) vit = VIT_MAX;    //Palier de vitesse fixé à 250
-        PWM_D_WriteCompare(vit); 
+        if(vitD > VIT_MAX) vitD = VIT_MAX;    //Palier de vitesse fixé à 250
+        PWM_D_WriteCompare(vitD); 
   
     }
-    else                            //Mode Reculer
+    else if(vitD < 0)                             //Mode Reculer
     {
         Moteur_D_INA_Write(0);
         Moteur_D_INB_Write(1);
-        if(vit < -VIT_MAX) vit = - VIT_MAX;  //Palier de vitesse fixé à 250
-        PWM_D_WriteCompare(-vit);
+        if(vitD < -VIT_MAX) vitD = - VIT_MAX;  //Palier de vitesse fixé à 250
+        PWM_D_WriteCompare(-vitD);
         
         
     }
@@ -294,23 +294,23 @@ void write_PWMD(int vit)
 /* RETOUR : rien                                                                        */
 /* DESCRIPTIF : permet de choisir la vitesse du moteur 2                                */
 /****************************************************************************************/
-void write_PWMG(int vit)
+void write_PWMG(double vitG)
 {
-    if(vit >= 0)                    //Mode Avancer
+    if(vitG >= 0)                    //Mode Avancer
     {
     
         Moteur_G_INA_Write(1);
         Moteur_G_INB_Write(0);
-        if(vit > VIT_MAX) vit = VIT_MAX;    //Palier de vitesse fixé à 250
-        PWM_G_WriteCompare(vit);
+        if(vitG > VIT_MAX) vitG = VIT_MAX;    //Palier de vitesse fixé à 250
+        PWM_G_WriteCompare(vitG);
     }
-    else                            //Mode Reculer
+    else if(vitG < 0)                          //Mode Reculer
     {
         
         Moteur_G_INA_Write(0);
         Moteur_G_INB_Write(1);
-        if(vit < -VIT_MAX) vit = - VIT_MAX;  //Palier de vitesse fixé à 250
-        PWM_G_WriteCompare(-vit);
+        if(vitG < -VIT_MAX) vitG = - VIT_MAX;  //Palier de vitesse fixé à 250
+        PWM_G_WriteCompare(-vitG);
     }
 /*    if(stop_receive)
     {
@@ -360,10 +360,10 @@ void Moteur_D_INB_Write(bool set){
   digitalWrite(15, set);
 }
 void PWM_D_WriteCompare(int vitD){
-  ledcWrite(2, vitD);
+  ledcWrite(PWMDChannel, vitD);
 }
 void PWM_G_WriteCompare(int vitG){
-  ledcWrite(3, vitG);
+  ledcWrite(PWMGChannel, vitG);
 }
 /* [] END OF FILE */
 

@@ -8,12 +8,12 @@
 #include <BLE2902.h>
 #include <Wire.h>
 //----------------------------------------------------------------------Variables
-#define bleServerName "ESP32EB"
+#define bleServerName "BaseRoulante"
 #define peerName "ESP32EA";
 //SLAVE-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_
 /* UUID's of the service, characteristic that we want to read*/
 // BLE Service
-static BLEUUID serviceUUID("6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
+static BLEUUID serviceUUID("69a68877-c627-42d1-a087-6a1307f83616");
 static BLEUUID      rxUUID("6E400002-B5A3-F393-E0A9-E50E24DCCA9E");
 static BLEUUID      txUUID("6E400003-B5A3-F393-E0A9-E50E24DCCA9E");
 //-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_SLAVE

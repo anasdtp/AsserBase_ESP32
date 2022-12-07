@@ -89,6 +89,8 @@
 #define ROTATION_X_Y_THETA_1 1
 #define LIGNE_DROITE_X_Y_THETA 2
 #define ROTATION_X_Y_THETA_2 3
+
+#define VIT_MAX 1000//1740 normalement
 /****************************************************************************************/
 /*                         Definition des informations du robot                         */
 /****************************************************************************************/ 
@@ -103,22 +105,9 @@
 #define Ama_clo_coef 1500.0
 #define TE (TE_100US*0.0001) //soit 2.5ms
 void Encodeur_Init();
-/****************************************************************************************/
-/*                             Prototype de la fonction                                 */    
-/* NOM : write_PWMD                                                                     */
-/* ARGUMENT : entier                                                                    */
-/* RETOUR : rien                                                                        */
-/* DESCRIPTIF : permet de choisir la vitesse du moteur 1                                */
-/****************************************************************************************/      
-void write_PWMD(int vit);
-/****************************************************************************************/
-/*                             Prototype de la fonction                                 */    
-/* NOM : write_PWMG                                                                     */
-/* ARGUMENT : entier                                                                    */
-/* RETOUR : rien                                                                        */
-/* DESCRIPTIF : permet de choisir la vitesse du moteur 2                                */
-/****************************************************************************************/
-void write_PWMG(int vit);
+
+void write_PWMD(double vit);
+void write_PWMG(double vit);
 void Moteur_G_INA_Write(bool set);
 void Moteur_G_INB_Write(bool set);
 void Moteur_D_INA_Write(bool set);
@@ -205,6 +194,11 @@ extern volatile uint16_t mscount , mscount1 ,  mscount2;
 extern buf_circ_t buffer_distanceG;
 extern buf_circ_t buffer_distanceD;
 extern char flagDebutBezier;
+
+const int PWM_MOTD = 18;    // PIN18
+const int PWM_MOTG = 17;    
+const int PWMDChannel = 3;
+const int PWMGChannel = 2;
 #endif
 /****************************************************************************************/
 //Sinon, détails : les angles sont exprimés en dixièmes de degrés quand il faut faire des calculs, ou quand ils faut les transmettre en CAN
