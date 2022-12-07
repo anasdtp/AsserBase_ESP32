@@ -24,19 +24,19 @@ const double LARGEUR_ROBOT_TIC = LARGEUR_ROBOT/(PERIMETRE_ROUE_CODEUSE / RESOLUT
 unsigned char tC1, tC2, tC3, tC4, tC5, nbexpr;
 BUF_CIRC_DEF(buffer_distanceG, 50);
 BUF_CIRC_DEF(buffer_distanceD, 50);
-ESP32Encoder EncoderD;
-ESP32Encoder EncoderG;
+ESP32Encoder EncoderDroite;
+ESP32Encoder EncoderGauche;
 void Encodeur_Init(){
   //ESP32Encoder::useInternalWeakPullResistors=DOWN;
 	// Enable the weak pull up resistors
 	ESP32Encoder::useInternalWeakPullResistors=UP;
 	// use pin 23 and 22 for the first encoder
-	EncoderD.attachSingleEdge(39, 36);
+	EncoderDroite.attachSingleEdge(39, 36);
 	// use pin 39 and 36 for the second encoder
-	EncoderG.attachSingleEdge(22, 23);
+	EncoderGauche.attachSingleEdge(22, 23);
 	// clear the encoder's raw count and set the tracked count to zero
-    EncoderD.clearCount();
-    EncoderG.clearCount();
+    EncoderDroite.clearCount();
+    EncoderGauche.clearCount();
 }
                 
 /****************************************************************************************/
@@ -48,13 +48,13 @@ void Encodeur_Init(){
 void AsserInitCoefs()
 {
     //Coefficients de correction de l'asservissement
-    Kpp = 2;//0.9     //0.4 0.5  //plus grand = roue qui forcent plus pour revenir //2 avant
-    Kip = 0.001;//0.0007; le 7 juin 2021  //.0001;   //0.0007 0.0005 // suppression de Ki pour tests de reset //0 avant
-    Kdp = 2;     //0.1 0.5     //plus grand = asservissement plus dur //2 avant
+    Kpp = 0.9; //0.9 le 07 décembre                                             //0.9     //0.4 0.5  //plus grand = roue qui forcent plus pour revenir //2 avant
+    Kip = 0.0001;  //0 le 07 décembre                                              //0.0007; le 7 juin 2021  //.0001;   //0.0007 0.0005 // suppression de Ki pour tests de reset //0 avant
+    Kdp = 0.15; ////0.1 le 07 décembre                                             //0.1 0.5     //plus grand = asservissement plus dur //2 avant
        
     KppD = Kpp;     //0.5
     KipD = Kip*TE/0.02;   //0.001
-    KdpD = Kdp/TE*(1/320);     //2.5 /0.02
+    KdpD = Kdp/TE*0.02;     //2.5
     KppG = Kpp;     //0.5
     KipG = Kip*TE/0.02;  //0.001
     KdpG = Kdp/TE*0.02;     //2.5
@@ -134,7 +134,7 @@ void Asser_Pos_Mot(double pcons_posG, double pcons_posD, double* commandeG, doub
     double rectif = KppR * Delta_ErreurPos + KipR * somme_Delta_ErreurPos + KdpR * deriv_Delta_ErreurPos;
     pcons_posG_rectif = pcons_posG + rectif;        //Mise a jour de la commande moteur
     pcons_posD_rectif = pcons_posD - rectif;        //Mise a jour de la commande moteur
-    last_Delta_ErreurPos = Delta_ErreurPos;       //Stockage de la nouvelle erreur
+    last_Delta_ErreurPos = Delta_ErreurPos;         //Stockage de la nouvelle erreur
     
     //*commandeG = Asser_Pos_MotG(pcons_posG_rectif);
     //*commandeD = Asser_Pos_MotD(pcons_posD_rectif);
@@ -173,15 +173,15 @@ void Asser_Pos_Mot(double pcons_posG, double pcons_posD, double* commandeG, doub
     //pcons_posD_prec = pcons_posD, pcons_posG_prec = pcons_posG;
 }
 /******************************/
-/* NOM : Asser_Pos_MotD                                                               */
-/* ARGUMENT : double pcons_pos -> position voulue exprimée en tick d'encodeur           */
-/*                                1024 par tour de roue                                 */
-/* RETOUR : rien                                                                        */
-/* DESCRIPTIF : Fonction appelee pour calculer la commande du moteur D                  */
+/* NOM : Asser_Pos_MotD                                                                */
+/* ARGUMENT : double pcons_pos -> position voulue exprimée en tick d'encodeur          */
+/*                                1024 par tour de roue                                */
+/* RETOUR : rien                                                                       */
+/* DESCRIPTIF : Fonction appelee pour calculer la commande du moteur D                 */
 /******************************/ 
 double Asser_Pos_MotD(double pcons_pos)
 {
-    double pos, Delta_ErreurPos, commande;
+    double pos, Delta_ErreurPos, commandeD;
     pos = lireCodeurD();      //Recuperation de la valeur du compteur incrémental
     ErreurPosD = pcons_pos - pos;      //Calcul l'erreur par rapport à la consigne   
     Delta_ErreurPos = ErreurPosD - last_ErreurPosD;    //Calcul de la derivee
@@ -193,16 +193,16 @@ double Asser_Pos_MotD(double pcons_pos)
         else if (Somme_ErreurPosD >= (250/KipD)) 
             Somme_ErreurPosD = (250/KipD);
     }
-    commande = (KppD * ErreurPosD + KipD * Somme_ErreurPosD + KdpD * Delta_ErreurPos);        //Mise a jour de la commande moteur
+    commandeD = (KppD * ErreurPosD + KipD * Somme_ErreurPosD + KdpD * Delta_ErreurPos);        //Mise a jour de la commande moteur
     last_ErreurPosD = ErreurPosD;       //Stockage de la nouvelle erreur
-    return commande;
+    return commandeD;
 }
 /******************************/
 /* NOM : Asser_Pos_MotG                                                                */
-/* ARGUMENT : double pcons_pos -> position voulue exprimée en tick d'encodeur           */
-/*                                1024 par tour de roue                                 */
-/* RETOUR : rien                                                                        */
-/* DESCRIPTIF : Fonction appelee pour calculer la commande du moteur D                  */
+/* ARGUMENT : double pcons_pos -> position voulue exprimée en tick d'encodeur          */
+/*                                1024 par tour de roue                                */
+/* RETOUR : rien                                                                       */
+/* DESCRIPTIF : Fonction appelee pour calculer la commande du moteur D                 */
 /******************************/
 double Asser_Pos_MotG(double pcons_pos)
 {
@@ -230,7 +230,7 @@ double Asser_Pos_MotG(double pcons_pos)
 /****************************************************************************************/
 double lireCodeurD(void)
 {
-    return COEF_ROUE_DROITE*EncoderD.getCount();
+    return COEF_ROUE_DROITE*EncoderDroite.getCount();
 }
 /****************************************************************************************/
 /* NOM : lectureErreur                                                                  */
@@ -253,7 +253,7 @@ void lectureErreur(void)
 /****************************************************************************************/
 double lireCodeurG(void)
 {
-    return COEF_ROUE_GAUCHE*EncoderG.getCount();
+    return COEF_ROUE_GAUCHE*EncoderGauche.getCount();
 }
 /****************************************************************************************/
 /* NOM : write_PWMD                                                                     */
@@ -268,14 +268,16 @@ void write_PWMD(int vit)
         Moteur_D_INA_Write(1);      
         Moteur_D_INB_Write(0);
         if(vit > VIT_MAX) vit = VIT_MAX;    //Palier de vitesse fixé à 250
-        PWM_D_WriteCompare(vit);    
+        PWM_D_WriteCompare(vit); 
+  
     }
     else                            //Mode Reculer
     {
         Moteur_D_INA_Write(0);
         Moteur_D_INB_Write(1);
-        if(vit < -VIT_MAX) vit = -VIT_MAX;  //Palier de vitesse fixé à 250
+        if(vit < -VIT_MAX) vit = - VIT_MAX;  //Palier de vitesse fixé à 250
         PWM_D_WriteCompare(-vit);
+        
         
     }
 /*    if(stop_receive)
@@ -297,17 +299,17 @@ void write_PWMG(int vit)
     if(vit >= 0)                    //Mode Avancer
     {
     
-        Moteur_G_INA_Write(0);
-        Moteur_G_INB_Write(1);
+        Moteur_G_INA_Write(1);
+        Moteur_G_INB_Write(0);
         if(vit > VIT_MAX) vit = VIT_MAX;    //Palier de vitesse fixé à 250
         PWM_G_WriteCompare(vit);
     }
     else                            //Mode Reculer
     {
         
-        Moteur_G_INA_Write(1);
-        Moteur_G_INB_Write(0);
-        if(vit < -VIT_MAX) vit = -VIT_MAX;  //Palier de vitesse fixé à 250
+        Moteur_G_INA_Write(0);
+        Moteur_G_INB_Write(1);
+        if(vit < -VIT_MAX) vit = - VIT_MAX;  //Palier de vitesse fixé à 250
         PWM_G_WriteCompare(-vit);
     }
 /*    if(stop_receive)
@@ -357,10 +359,35 @@ void Moteur_D_INA_Write(bool set){
 void Moteur_D_INB_Write(bool set){
   digitalWrite(15, set);
 }
-void PWM_D_WriteCompare(int vit){
-  ledcWrite(1, vit*1000/VIT_MAX);
+void PWM_D_WriteCompare(int vitD){
+  ledcWrite(2, vitD);
 }
-void PWM_G_WriteCompare(int vit){
-  ledcWrite(0, vit*1000/VIT_MAX);
+void PWM_G_WriteCompare(int vitG){
+  ledcWrite(3, vitG);
 }
 /* [] END OF FILE */
+
+
+
+
+
+
+void Moteur_D_0(void){
+
+    double pos, Delta_ErreurPos, commande;
+    pos = lireCodeurD();      //Recuperation de la valeur du compteur incrémental
+    ErreurPosD = - pos;      //Calcul l'erreur par rapport à la consigne   
+    Delta_ErreurPos = ErreurPosD - last_ErreurPosD;    //Calcul de la derivee
+    Somme_ErreurPosD += ErreurPosD;     //Calcul de l'integrale    
+    if(KipD>0)
+    {
+        if (Somme_ErreurPosD <= (-250/KipD)) 
+            Somme_ErreurPosD = (-250/KipD);
+        else if (Somme_ErreurPosD >= (250/KipD)) 
+            Somme_ErreurPosD = (250/KipD);
+    }
+    commande = (KppD * ErreurPosD + KipD * Somme_ErreurPosD + KdpD * Delta_ErreurPos);        //Mise a jour de la commande moteur
+    last_ErreurPosD = ErreurPosD;       //Stockage de la nouvelle erreur
+    write_PWMD(commande);
+
+}

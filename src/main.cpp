@@ -5,7 +5,13 @@
 #include "ident_crac.h"
 #include "buffer_circulaire.h"
 #include "clotho.h"
+
 //----------------------------------------------------------------------Variables
+
+
+
+
+
 bool set = false;
 int inApin_MOTD = 16; // INA2 checked
 int inApin_MOTG = 26; // INA1 checked
@@ -14,10 +20,10 @@ int inBpin_MOTG = 25; // INB1 checked
   // PWM moteur
 int PWM_MOTD = 18;    // PIN18
 int PWM_MOTG = 17;    
-int PWMDChannel = 0;
-int PWMGChannel = 1;
+int PWMDChannel = 3;
+int PWMGChannel = 2;
 int joyMot = 500;
-double erreur = 0;
+double erreur = 3;
 /****************************************************************************************/
 /*                           Definition et affectation des variables                   */
 /*            Par souci de simplicité, on utilise beaucoup de variables globales        */
@@ -40,6 +46,9 @@ double consigne_posG = 0, consigne_posD = 0;
 float distanceG = 0, distanceD = 0;
 char flagDebutBezier = 0;
 int nbValeurs = 0;
+
+
+
                 
 /****************************************************************************************/
 //Sinon, détails : les angles sont exprimés en dixièmes de degrés quand il faut faire des calculs, ou quand ils faut les transmettre en CAN
@@ -75,7 +84,17 @@ void X_Y_Theta(long px, long py, long ptheta, long sens, short vmax, short amax)
 void Recalage(int pcons, short vmax, short amax, short dir, short nv_val);
 int Courbe_bezier(double distanceG, double distanceD);
 void Odometrie(void);
-void asser_position(); //temporaire, pour test
+
+
+//temporaire, pour test
+
+void asser_position(); 
+int commande_mot_droit_0(void);
+void Mot_droit_0(void);
+int commande_mot_gauche_0(void);
+void Mot_gauche_0(void);
+
+
 //----------------------------------------------------------------------prototypes fonctions BLE et CAN
 void setupCAN();
 void writeStructInCAN(const CANMessage &theDATA);
@@ -152,9 +171,12 @@ void setup() {
 //----------------------------------------------------------------------loop
 void loop() {
   CANloop();
-  calcul();
-  //asser_position();
-  Odometrie();
+  //calcul();
+  asser_position();
+  //Odometrie();
+  
+  //test du moteur droit ainsi que de son asservissement par la roue encodeuse droite
+  
   
   
   
@@ -172,7 +194,7 @@ void loop() {
   }
   //digitalWrite(27, set);//pour mesurer le temps de boucle avec l'oscilloscope
   //set = !set;
-  mscount = 0;                    
+  mscount = 0;                
 }
 //----------------------------------------------------------------------fonctions
 /***************************************************************************************
@@ -2153,9 +2175,11 @@ void Odometrie(void)//fait
     //Condition d'envoi des informations de l'odometrie par CAN 
     if(mscount1 >= (500/TE_100US))//toutes les 50ms
     {
-      mscount1 = 0;
+        Serial.println();
+        Serial.printf("Codeur D : %lf ; Codeur G : %lf erreur : %lf\n", Odo_val_pos_D, Odo_val_pos_G, erreur);
+        mscount1 = 0;
     }
-    //Serial.printf("Codeur D : %lf ; Codeur G : %lf\n", Odo_val_pos_D, Odo_val_pos_G);
+    
         
     
 }  
@@ -2180,7 +2204,7 @@ void Moteur_Init(){
 //----------------------------------------------------------------------fonctions CAN et BLE
 void CANloop(){
   if(canAvailable || BtAvailable){
-    canReadExtRtr();//On le me ici pour ne pas surcharger l'interruption CAN.onRecveive
+    if(canAvailable){canReadExtRtr();}//On le me ici pour ne pas surcharger l'interruption CAN.onRecveive
     canAvailable = false; BtAvailable = false;
     //Serial.println("CAN received");
     
@@ -2487,11 +2511,11 @@ void writeStructInCAN(const CANMessage &theDATA){
   //Serial.print("packet on CAN...");
   if(!theDATA.RTR){CAN.write(theDATA.dt, theDATA.ln);}
   
-  CAN.endPacket();
+  /*CAN.endPacket();
   Serial.print(" ID : 0x");
   Serial.print(theDATA.ID, HEX);
   Serial.println(" done");
-  Serial.println();
+  Serial.println();*/
 }
 void canReadData(int packetSize){
   
@@ -2620,7 +2644,7 @@ bool connectToServer(BLEAddress pAddress) {
 void setupPWM(int PWMpin, int PWMChannel)
 {
   int freqMot = 20000;
-  int resolution = 10;
+  int resolution = 11;
   ledcSetup(PWMDChannel, freqMot, resolution);
   ledcSetup(PWMGChannel, freqMot, resolution);
   ledcAttachPin(PWM_MOTD, PWMDChannel);
@@ -2687,10 +2711,11 @@ void test_accel(void)//fonctionne
 }
 void asser_position(){
   double cmdD, cmdG, erreur;
-  Asser_Pos_Mot(0, 0, &cmdG, &cmdD);
+  Asser_Pos_Mot(0, 0, &cmdD, &cmdG);
   write_PWMD(cmdD);
   write_PWMG(cmdG);
-  ////Serial.printf("PWMD : %lf; PWMG : %lf / ; / codeurD : %lf ; codeurG : %lf\n", cmdD, cmdG, lireCodeurD(), lireCodeurG());
+  //if(mscount1 >= (499/TE_100US)){Serial.printf("PWMD : %lf; PWMG : %lf \n", cmdD, cmdG);}
+  Serial.printf("PWMD : %lf; PWMG : %lf / ; / codeurD : %lf ; codeurG : %lf\n", cmdD, cmdG, lireCodeurD(), lireCodeurG());
 }
 void onTime() {//fonction s'exécutent à chaque interruptions 
    mscount++;
@@ -2706,3 +2731,6 @@ void init_Timer(){
    timerAlarmWrite(timer, 1, true);      //freq de 250 000 Hz    
    timerAlarmEnable(timer); //active l'alarme
 }
+
+
+
