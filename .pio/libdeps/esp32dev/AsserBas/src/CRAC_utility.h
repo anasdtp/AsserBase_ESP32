@@ -90,7 +90,7 @@
 #define LIGNE_DROITE_X_Y_THETA 2
 #define ROTATION_X_Y_THETA_2 3
 
-#define VIT_MAX 1000//1740 normalement
+#define VIT_MAX 1740//1740 normalement
 /****************************************************************************************/
 /*                         Definition des informations du robot                         */
 /****************************************************************************************/ 

@@ -83,69 +83,50 @@ int Courbe_bezier(double distanceG, double distanceD);
 void Odometrie(void);
 void Moteur_Init();
 void setupPWM(int PWMpin, int PWMChannel);
-
+void init_coef();
 //----------------------------------------------------------------------prototypes fonctions BLE et CAN
 void setupCAN();
 void writeStructInCAN(const CANMessage &theDATA);
 void canReadData(int packetSize);
 void canReadExtRtr();
 void CANloop();
-void slaveBTConnect(std::string name);
+void masterBTConnect(std::string name);
 bool connectToServer(BLEAddress pAddress);
-void readDATA();
+void readDATA(std::string contenuBT, CANMessage &theDATA);
 void remplirStruct(int id, char len, char dt0, char dt1, char dt2, char dt3, char dt4, char dt5, char dt6, char dt7);
 void CANenvoiMsg1x8Bytes(uint32_t id, void *pdata);
 void CANenvoiMsg2x4Bytes(uint32_t id, void *pdata1, void *pdata2);
 void remplirStruct2x4Bytes(uint32_t id, void *pdata1, void *pdata2);
+void BtActualise();
 //----------------------------------------------------------------------callback fonctions
-static void notifyCallback(
-  BLERemoteCharacteristic* pBLERemoteCharacteristic,
-  uint8_t* pData,
-  size_t length,
-  bool isNotify) {
-    Serial.print("Notify callback for characteristic ");
-    Serial.print(pBLERemoteCharacteristic->getUUID().toString().c_str());
-    Serial.print(" of data length ");
-    Serial.println(length);
-    Serial.print("data: ");
-    Serial.println((char*)pData);
+class MyServerCallbacks : public BLEServerCallbacks {
+	void onConnect(BLEServer* pServer) {
+		deviceConnected = true;
+    BLEDevice::startAdvertising();
+	}
+	;
+
+	void onDisconnect(BLEServer* pServer) {
+		deviceConnected = false;
+	}
 }
+;
 
-class MyClientCallback : public BLEClientCallbacks {
-  void onConnect(BLEClient* pclient) {
-  }
-
-  void onDisconnect(BLEClient* pclient) {
-    connected = false;
-    Serial.println("onDisconnect");
-  }
+class MyCallbacks : public BLECharacteristicCallbacks {
+	void onWrite(BLECharacteristic *pCharacteristic) {
+		std::string rxValue = pCharacteristic->getValue();
+    readDATA(rxValue, DATAtoControl);
+    newCan = true;
+	}
 };
-
-//Callback function that gets called, when another device's advertisement has been received
-class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
-  void onResult(BLEAdvertisedDevice advertisedDevice) {
-    if (advertisedDevice.getName() == bleServerName) { //Check if the name of the advertiser matches
-      advertisedDevice.getScan()->stop(); //Scan can be stopped, we found what we are looking for
-      pServerAddress = new BLEAddress(advertisedDevice.getAddress()); //Address of advertiser is the one we need
-      doConnect = true; //Set indicator, stating that we are ready to connect
-      Serial.println("Device found. Connecting!");
-    }
-  }
-};
-
-
-static void CANNotifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristic, uint8_t* pData, size_t length, bool isNotify) {
-  //store can value
-  contenuBt = (char*)pData;
-  newCan = true;
-}
 
 //----------------------------------------------------------------------SETUP
 void setup() {
   Serial.begin(115200);
+  init_coef();
   setupCAN();
   //Init BLE device
-  slaveBTConnect("BaseRoulante");
+  masterBTConnect("BaseRoulante");
   Serial.printf("fin ble init\n"); //Ne pas rajouter de Serial.printx dans le loop 
                                   //sinon cela augmente le temps de loop on risque d'avoir un TE faux
   Encodeur_Init();
@@ -160,7 +141,9 @@ void setup() {
   writeStructInCAN(DATArobot);
   Serial.printf("envoie CAN ALIVE_MOTEUR\n");
   Serial.println("fin setup\n");
-  //liste.type = TYPE_DEPLACEMENT_IMMOBILE;//test
+  
+  liste.type = TYPE_DEPLACEMENT_LIGNE_DROITE;//test
+  liste.distance = 1000;
 }
 //----------------------------------------------------------------------loop
 void loop() {
@@ -176,8 +159,9 @@ void loop() {
     Serial.println(mscount);
     remplirStruct(ERREUR_TEMP_CALCUL,2, mscount,TE_100US,0,0,0,0,0,0);
     writeStructInCAN(DATArobot);
-    if (connected){
-        prxRemoteCharacteristic->writeValue((uint8_t *)&DATArobot, sizeof(DATArobot));
+    if (deviceConnected){
+        pTxCharacteristic->setValue((uint8_t *)&DATArobot, sizeof(DATArobot));
+		pTxCharacteristic->notify();
     //Serial.println("Sending via BT...");
     }else{if(!nbprint){Serial.println("The device is not connected"); nbprint ++;}}
   }
@@ -188,6 +172,7 @@ void loop() {
   }
   //digitalWrite(27, set);//pour mesurer le temps de boucle avec l'oscilloscope
   //set = !set;
+  BtActualise();
   mscount = 0;                
 }
 //----------------------------------------------------------------------fonctions
@@ -219,21 +204,23 @@ void calcul(void){//fait!!
         {
             etat_prec = liste.type;
             
-            //Serial.println("ID_DBUG_ETAT");
+            Serial.println("ID_DBUG_ETAT");
             remplirStruct(ID_DBUG_ETAT, 1, etat_prec, 0,0,0,0,0,0,0);
             writeStructInCAN(DATArobot);                             //CAN
-            if (connected){
-            prxRemoteCharacteristic->writeValue((uint8_t *)&DATArobot, sizeof(DATArobot));
-            //Serial.println("Sending via BT...");
-            }else{if(!nbprint){Serial.println("The device is not connected"); nbprint ++;}}
+            if (deviceConnected){
+                pTxCharacteristic->setValue((uint8_t *)&DATArobot, sizeof(DATArobot));
+		        pTxCharacteristic->notify();
+    //Serial.println("Sending via BT...");
+        }else{if(!nbprint){Serial.println("The device is not connected"); nbprint ++;}}
             
             #if F_DBUG_ETAT_DPL
             remplirStruct(ID_DBUG_ETAT_DPL, 1, etat_automate_depl, 0,0,0,0,0,0,0);
             writeStructInCAN(DATArobot);                             //CAN
-            if (connected){
-            prxRemoteCharacteristic->writeValue((uint8_t *)&DATArobot, sizeof(DATArobot));
-            //Serial.println("Sending via BT...");
-            }else{if(!nbprint){Serial.println("The device is not connected"); nbprint ++;}}
+            if (deviceConnected){
+                pTxCharacteristic->setValue((uint8_t *)&DATArobot, sizeof(DATArobot));
+		        pTxCharacteristic->notify();
+    //Serial.println("Sending via BT...");
+        }else{if(!nbprint){Serial.println("The device is not connected"); nbprint ++;}}
             #endif
         }
         #endif
@@ -496,8 +483,8 @@ void calcul(void){//fait!!
             //CANenvoiMsg2x1Byte(INSTRUCTION_END_MOTEUR, Message_Fin_Mouvement, 0);
             
             //On vide le buffer de mouvements et on prévoit de s'asservir sur la position atteinte
-            for(i = 0;i<nb_ordres;i++)  liste[i] = (struct Ordre_deplacement){0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-            liste[0] = (struct Ordre_deplacement){TYPE_DEPLACEMENT_IMMOBILE,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+            for(i = 0;i<nb_ordres;i++)  liste = (struct Ordre_deplacement){0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+            liste = (struct Ordre_deplacement){TYPE_DEPLACEMENT_IMMOBILE,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
             nb_ordres = 0;
             cpt_ordre = 0;
             cpt = 0;
@@ -2179,7 +2166,7 @@ void Odometrie(void)//fait
     {
         //Serial.println();
         //Serial.printf("Codeur D : %lf ; Codeur G : %lf erreur : %lf\n", Odo_val_pos_D, Odo_val_pos_G, erreur);
-        if (connected)
+        if (deviceConnected)
         {
             remplirStruct2x4Bytes(ODOMETRIE_BIG_POSITION, &dist, &ang);
             //prxRemoteCharacteristic->writeValue((uint8_t *)&DATArobot, sizeof(DATArobot));
@@ -2224,7 +2211,6 @@ void CANloop(){
                 CANenvoiMsg1x8Bytes(ASSERVISSEMENT_CONFIG_KPI, &KipD);
                 CANenvoiMsg1x8Bytes(ASSERVISSEMENT_CONFIG_KPD, &KdpD);
                 break;
-            
             case ASSERVISSEMENT_CONFIG_KPP_DROITE:
                 memcpy(&KppD, DATAtoControl.dt, 8);
                 KppDa = KppD;
@@ -2290,7 +2276,7 @@ void CANloop(){
                     roue_drt_init = lireCodeurD();
                     roue_gch_init = lireCodeurG();
                 }
-                //Serial.println("ASSERVISSEMENT_ENABLE");
+                Serial.println("ASSERVISSEMENT_ENABLE");
             break;
                 
             case ASSERVISSEMENT_DECEL :
@@ -2381,6 +2367,21 @@ void CANloop(){
         
             }
             break;  
+            case ASSERVISSEMENT_CONFIG:
+            {
+                double k = TE/0.02;
+                int16_t vmax = (DATAtoControl.dt[1] << 8) | DATAtoControl.dt[0];
+                int16_t amax = (DATAtoControl.dt[3] << 8) | DATAtoControl.dt[2];
+                VMAX = ((double)vmax)*k;
+                AMAX = ((double)amax)*k*k;
+                DMAX = ((double)amax)*0.75*k*k;
+                ralentare = 1;
+        
+                //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x22, 0);
+                remplirStruct(ACKNOWLEDGE_MOTEUR, 2, 0x22, 0,0,0,0,0,0,0);
+                writeStructInCAN(DATArobot);
+            }
+            break;
             case ASSERVISSEMENT_ROTATION:
             {
                 /* `#START MESSAGE_Rotation_RECEIVED` */
@@ -2403,6 +2404,88 @@ void CANloop(){
                 
             }
             break;  
+            case ASSERVISSEMENT_RECALAGE:
+            {
+                stop_receive = 0;
+
+                int16_t distance = (DATAtoControl.dt[1] << 8) | DATAtoControl.dt[0];
+                uint8_t mode = DATAtoControl.dt[2];
+                int16_t valRecalage = (DATAtoControl.dt[4] << 8) | DATAtoControl.dt[3];
+                uint8_t enchainement = DATAtoControl.dt[5];
+                int8_t vinit = DATAtoControl.dt[6];
+                int8_t vfin = DATAtoControl.dt[7];
+        
+                //Recalage
+                if (mode)
+                {
+                    liste = (struct Ordre_deplacement){TYPE_DEPLACEMENT_IMMOBILE,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+                    nb_ordres = 0;
+                    cpt_ordre = 0;
+                    liste.type = TYPE_DEPLACEMENT_RECALAGE;
+                    liste.distance = ((distance * RESOLUTION_ROUE_CODEUSE) / PERIMETRE_ROUE_CODEUSE); //-
+                    liste.vmax = 10;
+                    liste.amax = 100;
+                    liste.enchainement = 0;
+                    liste.val_recalage = valRecalage;
+                    liste.recalage = mode;
+
+                    remplirStruct(ACKNOWLEDGE_MOTEUR, 2, 0x24, 0,0,0,0,0,0,0);
+                    writeStructInCAN(DATArobot);
+                    //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x24, 0);
+                }
+        
+                //Enchainement
+                else if (enchainement)
+                {
+                    if(nb_ordres) liste.type = TYPE_DEPLACEMENT_LIGNE_DROITE_EN;
+                    else liste.type = TYPE_TRAIT_ENCH_RCV;
+                    liste.distance = (distance * RESOLUTION_ROUE_CODEUSE) / PERIMETRE_ROUE_CODEUSE;
+                    liste.vmax = VMAX;
+                    liste.amax = AMAX;
+                    liste.dmax = DMAX;
+                    liste.enchainement = enchainement;
+                    liste.vinit = (long)((long)(VMAX)*(long)(vinit))>>8;
+                    liste.vfin = (long)((long)(VMAX)*(long)(vfin))>>8;
+            
+                    if (nb_ordres ==0 ){
+                        liste.vinit = 0;
+                        liste.vfin = VMAX;
+                    } else if (enchainement == 2){
+                        liste.vinit = VMAX;
+                        liste.vfin = 0;
+                    } else {
+                        liste.vinit = VMAX;
+                        liste.vfin = VMAX;
+                    }
+                    nb_ordres++;
+            
+                    if (enchainement == 2 ||1)  // ERREUR ?!?
+                    {
+                        remplirStruct(ACKNOWLEDGE_MOTEUR, 2, 0x24, 0,0,0,0,0,0,0);
+                        writeStructInCAN(DATArobot);
+                        //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x24, 0 /* enchainement<<3 */);
+                    }
+                }
+        
+                //Ligne droite
+                else
+                {          
+                    //On vide le buffer de mouvements
+                    liste = (struct Ordre_deplacement){TYPE_DEPLACEMENT_IMMOBILE,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+                    nb_ordres = 0;
+                    cpt_ordre = 0;
+                    liste.type = TYPE_DEPLACEMENT_LIGNE_DROITE;
+                    liste.distance = (distance * RESOLUTION_ROUE_CODEUSE) / PERIMETRE_ROUE_CODEUSE;
+                    liste.vmax = VMAX;
+                    liste.amax = AMAX;
+                    liste.enchainement = enchainement;
+
+                    remplirStruct(ACKNOWLEDGE_MOTEUR, 2, 0x24, 0,0,0,0,0,0,0);
+                    writeStructInCAN(DATArobot);
+                    //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x24, 0);
+                }
+            }
+            break;
             case ASSERVISSEMENT_BEZIER:
             {
                  /* `#START MESSAGE_Courbe_Bezier_RECEIVED` */
@@ -2436,6 +2519,36 @@ void CANloop(){
 
             }
             break;  
+            case ODOMETRIE_SMALL_POSITION:
+            {
+                Odo_x = (DATAtoControl.dt[1] << 8) | DATAtoControl.dt[0];
+                Odo_y = (DATAtoControl.dt[3] << 8) | DATAtoControl.dt[2];
+                Odo_theta = (DATAtoControl.dt[5] << 8) | DATAtoControl.dt[4];
+            }
+            break;
+            case ODOMETRIE_SMALL_VITESSE:
+            {
+
+            }
+            break;
+            case ODOMETRIE_BIG_POSITION:
+            {
+                Odo_x = (DATAtoControl.dt[1] << 8) | DATAtoControl.dt[0];
+                Odo_y = (DATAtoControl.dt[3] << 8) | DATAtoControl.dt[2];
+                Odo_theta = (DATAtoControl.dt[5] << 8) | DATAtoControl.dt[4];
+            }
+            break;
+            case ODOMETRIE_BIG_VITESSE:
+            {
+
+            }
+            break;
+            case GLOBAL_GAME_END:
+            {
+                 /* `#START MESSAGE_End_Game_RECEIVED` */
+                Fin_Match = 1;
+            }
+            break;
             case ASSERVISSEMENT_STOP:
             {
                 /* `#START MESSAGE_Stop_RECEIVED` */
@@ -2446,12 +2559,6 @@ void CANloop(){
                 //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x01, 0);
             }
             break;  
-            case GLOBAL_GAME_END:
-            {
-                 /* `#START MESSAGE_End_Game_RECEIVED` */
-                Fin_Match = 1;
-            }
-
             case CHECK_MOTEUR:
             {
                 /* `#START MESSAGE_Check_RECEIVED` */
@@ -2479,21 +2586,9 @@ void CANloop(){
       Serial.println("Sending via BT...");
     } else{Serial.println("The device is not connected");}*/
   }
-  // If the flag "doConnect" is true then we have scanned for and found the desired
-  // BLE Server with which we wish to connect.  Now we connect to it.  Once we are
-  // connected we set the connected flag to be true.
-    if (doConnect == true) {
-    if (connectToServer(*pServerAddress)) {
-      Serial.println("We are now connected to the BLE Server.");
-      //Activate the Notify property of each Characteristic
-      ptxRemoteCharacteristic->getDescriptor(BLEUUID((uint16_t)0x2902))->writeValue((uint8_t*)notificationOn, 2, true);
-    } else {Serial.println("We have failed to connect to the server; Restart your device to scan for nearby BLE server again.");}
-    doConnect = false;
-  }
   //if new CAN by BT are available, write it in CAN bus / CAN <-> Bt <-> CAN and use it to control the Robot
   if (newCan){
     newCan = false;
-    readDATA(); //interprete les donnees par Bt
     writeStructInCAN(DATAtoControl); 
     Serial.println(DATAtoControl.ID);
     BtAvailable = true;
@@ -2552,21 +2647,19 @@ void canReadExtRtr(){
   }
   else{DATAtoControl.RTR = false;}
 }
-void readDATA(){
-  //char contenuBt[sizeof(myData)]; // taille de la structure envoyée
-  if(canAvailable){
-  DATAtoControl.extented = contenuBt[0];
-  DATAtoControl.RTR = contenuBt[1];
-  DATAtoControl.ID = contenuBt[4] + (contenuBt[5]<<8) + (contenuBt[6]<<16) + (contenuBt[7]<<24);
-  Serial.println(contenuBt[4]);
-  DATAtoControl.ln = contenuBt[8];
+void readDATA(std::string contenuBT, CANMessage &theDATA){
+
+  theDATA.extented = contenuBT[0];
+  theDATA.RTR = contenuBT[1];
+  theDATA.ID = contenuBT[4] + (contenuBT[5]<<8) + (contenuBT[6]<<16) + (contenuBT[7]<<24);
+  theDATA.ln = contenuBT[8];
   int i;
   for(i=0;i<8;i++)
   {
-    DATAtoControl.dt[i]=contenuBt[i+9];
-  }
+    theDATA.dt[i]=contenuBT[i+9];
   }
 }
+
 void remplirStruct(int idf, char lenf, char dt0f, char dt1f, char dt2f, char dt3f, char dt4f, char dt5f, char dt6f, char dt7f){
   DATArobot.RTR = false;
   if(idf>0x7FF){DATArobot.extented = true;}
@@ -2612,47 +2705,58 @@ void remplirStruct2x4Bytes(uint32_t id, void *pdata1, void *pdata2){
     memcpy(&DATArobot.dt, pdata1, 4);
     memcpy(&(DATArobot.dt[4]), pdata2, 4);
 }
-void slaveBTConnect(std::string name){
+void masterBTConnect(std::string name){
   // Create the BLE Device
-  BLEDevice::init(name);
-  BLEDevice::setEncryptionLevel(ESP_BLE_SEC_ENCRYPT);
-  // Retrieve a Scanner and set the callback we want to use to be informed when we
-  // have detected a new device.  Specify that we want active scanning and start the
-  // scan to run for 30 seconds.
-  BLEScan* pBLEScan = BLEDevice::getScan();
-  pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
-  pBLEScan->setActiveScan(true);
-  pBLEScan->start(5, false);
+	Serial.println("Create the BLE Device..");
+	BLEDevice::init("BaseRoulante");
+
+	// Create the BLE Server
+	Serial.println("Create the BLE Server..");
+	pServer = BLEDevice::createServer();
+	pServer->setCallbacks(new MyServerCallbacks());
+
+	// Create the BLE Service
+	BLEService *pService = pServer->createService(SERVICE_UUID);
+
+	// Create a BLE Characteristic
+	pTxCharacteristic = pService->createCharacteristic(
+										  CHARACTERISTIC_UUID_TX,
+		                                  BLECharacteristic::PROPERTY_NOTIFY);
+                      
+	pTxCharacteristic->addDescriptor(new BLE2902());
+
+	BLECharacteristic * pRxCharacteristic = pService->createCharacteristic(
+											   CHARACTERISTIC_UUID_RX,
+		                                       BLECharacteristic::PROPERTY_WRITE);
+
+	pRxCharacteristic->setCallbacks(new MyCallbacks());
+
+	// Start the service
+	pService->start();
+
+	// Start advertising
+	//pServer->getAdvertising()->start();
+  BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+  pAdvertising->addServiceUUID(SERVICE_UUID);
+  pAdvertising->setScanResponse(false);
+  pAdvertising->setMinPreferred(0x0);  // set value to 0x00 to not advertise this parameter
+  BLEDevice::startAdvertising();
+
+	Serial.println("Waiting a client connection to notify...");
 }
-//Connect to the BLE Server that has the name, Service, and Characteristics
-bool connectToServer(BLEAddress pAddress) {
-   BLEClient* pClient = BLEDevice::createClient();
- 
-  // Connect to the remove BLE Server.
-  pClient->connect(pAddress);
-  Serial.println(" - Connected to server");
- 
-  // Obtain a reference to the service we are after in the remote BLE server.
-  BLERemoteService* pRemoteService = pClient->getService(serviceUUID);
-  if (pRemoteService == nullptr) {
-    //Serial.print("Failed to find our service UUID: ");
-    Serial.println(serviceUUID.toString().c_str());
-    return (false);
-  }
- 
-  // Obtain a reference to the characteristics in the service of the remote BLE server.
-  prxRemoteCharacteristic = pRemoteService->getCharacteristic(rxUUID);
-  ptxRemoteCharacteristic = pRemoteService->getCharacteristic(txUUID);
-  if (prxRemoteCharacteristic == nullptr || ptxRemoteCharacteristic == nullptr) {
-    //Serial.print("Failed to find our characteristic UUID");
-    return false;
-  }
-  Serial.println(" - Found our characteristics");
- 
-  //Assign callback functions for the Characteristics
-  ptxRemoteCharacteristic->registerForNotify(CANNotifyCallback);
-  connected = true;
-  return true;
+void BtActualise(){
+    // disconnecting
+	if(!deviceConnected && oldDeviceConnected) {
+		pServer->startAdvertising();   // restart advertising
+		Serial.println("start advertising");
+		oldDeviceConnected = deviceConnected;
+	}
+	// connecting
+	if(deviceConnected && !oldDeviceConnected) {
+		// do stuff here on connecting
+        oldDeviceConnected = deviceConnected;
+	}
+  
 }
 //----------------------------------------------------------------------autres fonctions
 /****************************************************************************************/
@@ -2747,3 +2851,11 @@ void init_Timer(){
 
 
 
+void init_coef(){
+    double k = TE/0.02;
+    VMAX = Vmax_coef*k;       // 50       petit 600   gros 600
+    AMAX = Amax_coef*k*k;    //  500     petit 6000  gros 6000
+    AMAX_CLO = Ama_clo_coef*k*k;    //  500     petit 6000  gros 6000
+    DMAX = Dmax_coef*0.75*k*k;   //  500    petit 6000   gros 6000
+    liste = (struct Ordre_deplacement){TYPE_DEPLACEMENT_IMMOBILE,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+}

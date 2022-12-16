@@ -48,9 +48,9 @@ void Encodeur_Init(){
 void AsserInitCoefs()
 {
     //Coefficients de correction de l'asservissement
-    Kpp = 2; //0.9 le 07 décembre                                             //0.9     //0.4 0.5  //plus grand = roue qui forcent plus pour revenir //2 avant
-    Kip = 0.0001;  //0 le 07 décembre                                              //0.0007; le 7 juin 2021  //.0001;   //0.0007 0.0005 // suppression de Ki pour tests de reset //0 avant
-    Kdp = 00; ////0.1 le 07 décembre                                             //0.1 0.5     //plus grand = asservissement plus dur //2 avant
+    Kpp = 0.9; //0.9 le 07 décembre                                             //0.9     //0.4 0.5  //plus grand = roue qui forcent plus pour revenir //2 avant
+    Kip = 0.0007;  //0 le 07 décembre                                              //0.0007; le 7 juin 2021  //.0001;   //0.0007 0.0005 // suppression de Ki pour tests de reset //0 avant
+    Kdp = 0.1; ////0.1 le 07 décembre                                             //0.1 0.5     //plus grand = asservissement plus dur //2 avant
        
     KppD = Kpp;     //0.5
     KipD = Kip*TE/0.02;   //0.001
