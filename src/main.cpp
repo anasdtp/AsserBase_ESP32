@@ -97,6 +97,7 @@ void remplirStruct(int id, char len, char dt0, char dt1, char dt2, char dt3, cha
 void CANenvoiMsg1x8Bytes(uint32_t id, void *pdata);
 void CANenvoiMsg2x4Bytes(uint32_t id, void *pdata1, void *pdata2);
 void remplirStruct2x4Bytes(uint32_t id, void *pdata1, void *pdata2);
+void CANenvoiMsg3x2Bytes(uint32_t id, int16_t data1, int16_t data2, int16_t data3);
 void BtActualise();
 //----------------------------------------------------------------------callback fonctions
 class MyServerCallbacks : public BLEServerCallbacks {
@@ -119,10 +120,9 @@ class MyCallbacks : public BLECharacteristicCallbacks {
     newCan = true;
 	}
 };
-
 //----------------------------------------------------------------------SETUP
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(921600);
   init_coef();
   setupCAN();
   //Init BLE device
@@ -151,7 +151,7 @@ void loop() {
   calcul();
   Odometrie();
   
-  //test du moteur droit ainsi que de son asservissement par la roue encodeuse droite
+  //test du moteur droit ainsi que de son asservissement par la roue encodeuse droitey
   
   if (mscount >= (TE_100US)) 
   {   
@@ -159,19 +159,26 @@ void loop() {
     Serial.println(mscount);
     remplirStruct(ERREUR_TEMP_CALCUL,2, mscount,TE_100US,0,0,0,0,0,0);
     writeStructInCAN(DATArobot);
+    
     if (deviceConnected){
         pTxCharacteristic->setValue((uint8_t *)&DATArobot, sizeof(DATArobot));
 		pTxCharacteristic->notify();
     //Serial.println("Sending via BT...");
     }else{if(!nbprint){Serial.println("The device is not connected"); nbprint ++;}}
+
+    
   }
   else 
   {
-    while (mscount<(TE_100US));
+    while (mscount<(TE_100US)){
+        
+    }
     
   }
+
   //digitalWrite(27, set);//pour mesurer le temps de boucle avec l'oscilloscope
   //set = !set;
+
   BtActualise();
   mscount = 0;                
 }
@@ -1735,11 +1742,11 @@ void X_Y_Theta(long px, long py, long ptheta, long sens, short vmax, short amax)
                     // On ajoute 7200 dixièmes de degrés pour être sûrs que le résultat soit positif
                     //ang1 = (short)((atan2((double)(py - Odo_y), (double)(px - Odo_x)) * 1800 / PI) - Odo_theta + 7200) % 3600;
                     
-                    if((((py-Odo_y)!=0)&&((px-Odo_x)!=0))||((px-Odo_x)!=0))
-                        ang1 = (short)((atan2((double)(py - Odo_y), (double)(px - Odo_x)) * 1800 / M_PI) - Odo_theta + 7200) % 3600;
+                    if((((py-Odo_y)!=0)&&((px-Odo_x)!=0))||((px-Odo_x)!=0)){
+                        ang1 = (short)((atan2((double)(py - Odo_y), (double)(px - Odo_x)) * 1800 / M_PI) - Odo_theta + 7200) % 3600;}
                         
                     // On passe le résultat entre -1800 et 1800
-                    if(ang1 > 1800) ang1 = (ang1 - 3600);
+                    if(ang1 > 1800) {ang1 = (ang1 - 3600);}
                     
                     // La 2è rotation correspond à l'angle de destination, moins l'angle à la fin de la ligne droite,
                     // donc le même qu'à la fin de la 1ère rotation, donc l'angle de départ plus la première rotation
@@ -2159,20 +2166,21 @@ void Odometrie(void)//fait
     //Stockage de la derniere valeur de l'odometrie
     Odo_last_val_pos_D = Odo_val_pos_D;
     Odo_last_val_pos_G = Odo_val_pos_G;
-    mscount1 ++;
-        
+    
+    
+    mscount1 ++;    
     //Condition d'envoi des informations de l'odometrie par CAN 
     if(mscount1 >= (500/TE_100US))//toutes les 50ms
     {
+        digitalWrite(27, set);//pour mesurer le temps de mscount1 avec l'oscilloscope
+        set = !set;
+        mscount1 = 0;
         //Serial.println();
         //Serial.printf("Codeur D : %lf ; Codeur G : %lf erreur : %lf\n", Odo_val_pos_D, Odo_val_pos_G, erreur);
-        if (deviceConnected)
-        {
-            remplirStruct2x4Bytes(ODOMETRIE_BIG_POSITION, &dist, &ang);
-            //prxRemoteCharacteristic->writeValue((uint8_t *)&DATArobot, sizeof(DATArobot));
-            //Serial.println("Sending via BT...");
-        }else{if(!nbprint){Serial.println("The device is not connected"); nbprint ++;}}
-        mscount1 = 0;
+
+        CANenvoiMsg3x2Bytes(ODOMETRIE_SMALL_POSITION, Odo_x, Odo_y, ((int16_t)Odo_theta) % 3600);
+        //CANenvoiMsg3x2Bytes(ODOMETRIE_SMALL_POSITION, Odo_x, Odo_y, ((int16)Odo_theta) % 3600);
+        //CANenvoiMsg3x2Bytes(DEBUG_ASSERV, QuadDec_D_GetCounter(), QuadDec_G_GetCounter(), consigne_pos);
     }
     
         
@@ -2512,6 +2520,7 @@ void CANloop(){
                     //Serial.println("ACKNOWLEDGE_BEZIER");
                     remplirStruct(ACKNOWLEDGE_BEZIER,0,0,0,0,0,0,0,0,0);
                     writeStructInCAN(DATArobot);
+
                     //CANenvoiMsg(ACKNOWLEDGE_BEZIER);
                 }
         
@@ -2615,8 +2624,8 @@ void writeStructInCAN(const CANMessage &theDATA){
   //Serial.print("packet on CAN...");
   if(!theDATA.RTR){CAN.write(theDATA.dt, theDATA.ln);}
   
-  /*CAN.endPacket();
-  Serial.print(" ID : 0x");
+  CAN.endPacket();
+  /*Serial.print(" ID : 0x");
   Serial.print(theDATA.ID, HEX);
   Serial.println(" done");
   Serial.println();*/
@@ -2704,6 +2713,20 @@ void remplirStruct2x4Bytes(uint32_t id, void *pdata1, void *pdata2){
     DATArobot.ln = 8;
     memcpy(&DATArobot.dt, pdata1, 4);
     memcpy(&(DATArobot.dt[4]), pdata2, 4);
+}
+void CANenvoiMsg3x2Bytes(uint32_t id, int16_t data1, int16_t data2, int16_t data3){
+    DATArobot.RTR = false;
+    if(id>0x7FF){DATArobot.extented = true;}
+    else{DATArobot.extented = false;}
+    DATArobot.ID = id;
+    DATArobot.ln = 6;
+    DATArobot.dt[0] = data1 & 0xFF;
+    DATArobot.dt[1] = (data1 >> 8) & 0xFF;
+    DATArobot.dt[2] = data2 & 0xFF;
+    DATArobot.dt[3] = (data2 >> 8) & 0xFF;
+    DATArobot.dt[4] = data3 & 0xFF;
+    DATArobot.dt[5] = (data3 >> 8) & 0xFF;
+    writeStructInCAN(DATArobot);
 }
 void masterBTConnect(std::string name){
   // Create the BLE Device
