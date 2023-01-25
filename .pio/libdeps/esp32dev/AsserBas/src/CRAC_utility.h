@@ -94,11 +94,11 @@
 /****************************************************************************************/
 /*                         Definition des informations du robot                         */
 /****************************************************************************************/ 
-#define LARGEUR_ROBOT 214.4  //244.5 213.9 209. 208.53 ancienne valeur 213.9 valeur 10 tours 260.17  //premier robot 213.9 
-#define PERIMETRE_ROUE_CODEUSE 162.9 //156.9 robot 1 // 160.9 robot 2      //theorique : 157
+#define LARGEUR_ROBOT 216.0  //214.4  244.5 213.9 209. 208.53 ancienne valeur 213.9 valeur 10 tours 260.17  //premier robot 213.9 
+#define PERIMETRE_ROUE_CODEUSE 124.6 //162.9    156.9 robot 1 // 160.9 robot 2      //theorique : 157
 #define COEF_ROUE_GAUCHE 1.0   //1.00595 - 0.9992505621    Petit virage à droite à gauche  ancien : 1.0100 / 1.0055
 #define COEF_ROUE_DROITE 1.0  //BLANC
-#define TE_100US 25          //Temps d'echantiollonage -> 25 x 100US = 2.5ms
+#define TE_100US 25          //Temps d'echantionnage -> 25 x 100US = 2.5ms
 #define Vmax_coef 300.0           //  600       DANGER>>>>>>> chauffage micro
 #define Amax_coef 3000.0          // 6000       DANGER>>>>>>> chauffage micro
 #define Dmax_coef 3000.0          // 6000       DANGER>>>>>>> chauffage micro
@@ -139,7 +139,7 @@ double lireCodeurG();
 void Asser_Init_D();
 void Asser_Init_G();
 void Asser_Init();
-void AsserInitCoefs();
+void AsserInitCoefs(double Kp, double Ki, double Kd);
 int signesDif(double v1, double v2);
 /****************************************************************************************/
 /* NOM : lectureErreur                                                                  */
@@ -185,7 +185,8 @@ extern int      nb_ordres;
                 
 extern struct Ordre_deplacement liste;
 extern double   KppD, KipD, KdpD, KppG, KipG, KdpG,                             // Valeurs des correcteurs d'asservissement pour les G moteurs
-                KppDa, KipDa, KdpDa, KppGa, KipGa, KdpGa;                       // Valeurs des correcteurs d'asservissement pour les 2 moteurs
+                KppDa, KipDa, KdpDa, KppGa, KipGa, KdpGa,
+                Kpp, Kip, Kdp;                       // Valeurs des correcteurs d'asservissement pour les 2 moteurs
 extern const double DTIC;   
 extern const double LARGEUR_ROBOT_TIC;                     // Valeurs des correcteurs d'asservissement pour les 2 moteurs
 extern unsigned char tC1, tC2, tC3, tC4, tC5, nbexpr;

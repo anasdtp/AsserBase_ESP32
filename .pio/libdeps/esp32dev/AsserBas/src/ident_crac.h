@@ -48,7 +48,7 @@
 #define ASSERVISSEMENT_CONFIG_KPD 0x1FA  // Config coef KPD
 #define ASSERVISSEMENT_ENABLE 0x1F7  // Activation asservissement  (0 : désactivation, 1 : activation)
 #define ASSERVISSEMENT_REQUETE_PID 0x1FB
-    
+
     
 #define ASSERVISSEMENT_DECEL 0x019 
 #define ASSERVISSEMENT_BEZIER 0x008
