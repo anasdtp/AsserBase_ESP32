@@ -18,9 +18,12 @@ double KppD, KipD, KdpD, KppG, KipG, KdpG, KppR, KipR, KdpR,                    
 double last_ErreurPosD=0, Somme_ErreurPosD=0, ErreurPosD=0;
 double last_ErreurPosG=0, Somme_ErreurPosG=0, ErreurPosG=0;
 double last_Delta_ErreurPos=0, somme_Delta_ErreurPos=0, Delta_ErreurPos=0;
-  
-const double DTIC = PERIMETRE_ROUE_CODEUSE / RESOLUTION_ROUE_CODEUSE; // longeur d'un tic de roue codeuse, en mm
-const double LARGEUR_ROBOT_TIC = LARGEUR_ROBOT/(PERIMETRE_ROUE_CODEUSE / RESOLUTION_ROUE_CODEUSE); // largeur du robot en tic   //c'est pour harmoniser les unités
+
+double PERIMETRE_ROUE_CODEUSE = 124.58, LARGEUR_ROBOT = 217;
+
+double DTIC = PERIMETRE_ROUE_CODEUSE / RESOLUTION_ROUE_CODEUSE; // longeur d'un tic de roue codeuse, en mm
+double LARGEUR_ROBOT_TIC = LARGEUR_ROBOT/(PERIMETRE_ROUE_CODEUSE / RESOLUTION_ROUE_CODEUSE); // largeur du robot en tic   //c'est pour harmoniser les unités
+
 unsigned char tC1, tC2, tC3, tC4, tC5, nbexpr;
 BUF_CIRC_DEF(buffer_distanceG, 50);
 BUF_CIRC_DEF(buffer_distanceD, 50);
@@ -62,6 +65,10 @@ void AsserInitCoefs(double Kp, double Ki, double Kd)
     KppR = 0;//1;     //0.5
     KipR = 0;//0.1;  //0.001
     KdpR = 0;//10;     //2.5
+
+    DTIC              =                PERIMETRE_ROUE_CODEUSE / RESOLUTION_ROUE_CODEUSE; // longeur d'un tic de roue codeuse, en mm
+    LARGEUR_ROBOT_TIC = LARGEUR_ROBOT/(PERIMETRE_ROUE_CODEUSE / RESOLUTION_ROUE_CODEUSE);
+
 }
 /****************************************************************************************/
 /* NOM : Assert_Init_D                                                                  */

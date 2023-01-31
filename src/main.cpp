@@ -42,7 +42,7 @@ char flagDebutBezier = 0;
 int nbValeurs = 0;
 int nbprint = 0;
 
-double Kp =6.25, Ki =0.0, Kd =10.0;
+double Kp =8    , Ki =0.0, Kd =35.0;
                 
 /****************************************************************************************/
 //Sinon, détails : les angles sont exprimés en dixièmes de degrés quand il faut faire des calculs, ou quand ils faut les transmettre en CAN
@@ -97,6 +97,7 @@ void CANloop();
 void masterBTConnect(std::string name);
 bool connectToServer(BLEAddress pAddress);
 void readDATA(std::string contenuBT, CANMessage &theDATA);
+void printCANMsg(CANMessage& msg);
 void remplirStruct(int id, char len, char dt0, char dt1, char dt2, char dt3, char dt4, char dt5, char dt6, char dt7, CANMessage &theDATA);
 void CANenvoiMsg1x8Bytes(uint32_t id, void *pdata);
 void CANenvoiMsg2x4Bytes(uint32_t id, void *pdata1, void *pdata2);
@@ -146,8 +147,8 @@ void setup() {
   Serial.printf("envoie CAN ALIVE_MOTEUR\n");
   Serial.println("fin setup\n");
   
-  liste.type = TYPE_DEPLACEMENT_LIGNE_DROITE;//test
-  liste.distance = 1000;
+  /*liste.type = TYPE_DEPLACEMENT_LIGNE_DROITE;//test
+  liste.distance = 1000;*/
 }
 //----------------------------------------------------------------------loop
 void loop() {
@@ -660,6 +661,7 @@ void CANloop(){
             case ASSERVISSEMENT_CONFIG_KPP:{
                 Kp = 0;
                 memcpy(&Kp, DATAtoControl.dt, 8);
+                
                 AsserInitCoefs(Kp, Ki, Kd);
                 Serial.print("  ASSERVISSEMENT_CONFIG_KPP : ");
                 Serial.printf("%f ", Kp);
@@ -682,7 +684,50 @@ void CANloop(){
                 Serial.printf("%f ", Kd);
                 Serial.println();
                 break;
-            
+//---------------------------------------------Qt
+            case ASSERVISSEMENT_CONFIG_KPP_Qt:{
+                Kp = ((DATAtoControl.dt[0] << 24) | (DATAtoControl.dt[1] << 16) | 
+                      (DATAtoControl.dt[2] << 8) | DATAtoControl.dt[3]) / 1000.000;  
+                
+                AsserInitCoefs(Kp, Ki, Kd);
+                Serial.print("  ASSERVISSEMENT_CONFIG_KPP Qt: ");
+                Serial.printf("%f ", Kp);
+                Serial.println();
+                }
+                break;
+            case ASSERVISSEMENT_CONFIG_KPI_Qt :
+                Ki = ((DATAtoControl.dt[0] << 24) | (DATAtoControl.dt[1] << 16) | 
+                      (DATAtoControl.dt[2] << 8) | DATAtoControl.dt[3]) / 1000.000;  
+
+                AsserInitCoefs(Kp, Ki, Kd);
+                Serial.print("  ASSERVISSEMENT_CONFIG_KPI Qt: ");
+                Serial.printf("%f ", Ki);
+                Serial.println();
+                break;
+            case ASSERVISSEMENT_CONFIG_KPD_Qt :
+                Kd= ((DATAtoControl.dt[0] << 24) | (DATAtoControl.dt[1] << 16) | 
+                      (DATAtoControl.dt[2] << 8) | DATAtoControl.dt[3]) / 1000.000;  
+                     
+                AsserInitCoefs(Kp, Ki, Kd); 
+                Serial.print("  ASSERVISSEMENT_CONFIG_KPD Qt: ");
+                Serial.printf("%f ", Kd);
+                Serial.println();
+                break;
+//---------------------------------------------
+            case ASSERVISSEMENT_CONFIG_PERIMETRE_ROUE_CODEUSE :
+                memcpy(&PERIMETRE_ROUE_CODEUSE, DATAtoControl.dt, 8);
+                AsserInitCoefs(Kp, Ki, Kd); 
+                Serial.print("  ASSERVISSEMENT_CONFIG_PERIMETRE_ROUE_CODEUSE : ");
+                Serial.printf("%f ", PERIMETRE_ROUE_CODEUSE);
+                Serial.println();
+                break;
+            case ASSERVISSEMENT_CONFIG_LARGEUR_ROBOT :
+                memcpy(&LARGEUR_ROBOT, DATAtoControl.dt, 8);
+                AsserInitCoefs(Kp, Ki, Kd); 
+                Serial.print("  ASSERVISSEMENT_CONFIG_LARGEUR_ROBOT : ");
+                Serial.printf("%f ", LARGEUR_ROBOT);
+                Serial.println();
+                break;
             case ECRAN_CHOICE_COLOR :
                 Serial.println("ECRAN_CHOICE_COLOR");
                 break;
@@ -2656,7 +2701,7 @@ void canReadData(int packetSize){
   remplirStruct(0,0,0,0,0,0,0,0,0,0, DATAtoControl);
   DATAtoControl.ID = CAN.packetId();
   DATAtoControl.ln = CAN.packetDlc();
-  Serial.printf("Received CAN, ID : 0x%.3X ; len : %d\n", DATAtoControl.ID, DATAtoControl.ln);
+  //Serial.printf("Received CAN, ID : 0x%.3X ; len : %d\n", DATAtoControl.ID, DATAtoControl.ln);
   // only print packet DATAtoControl.dt for non-RTR packets
   int i = 0;
   while (CAN.available())
@@ -2677,6 +2722,7 @@ void canReadExtRtr(){
       DATAtoControl.RTR = true;
   }
   else{DATAtoControl.RTR = false;}
+  printCANMsg(DATAtoControl);
 }
 void readDATA(std::string contenuBT, CANMessage &theDATA){
 
@@ -2690,6 +2736,16 @@ void readDATA(std::string contenuBT, CANMessage &theDATA){
     theDATA.dt[i]=contenuBT[i+9];
   }
 }
+
+void printCANMsg(CANMessage& msg) {
+    printf("  ID      = 0x%.3x\n", msg.ID);
+    printf("  extented    = %d\n", msg.extented);
+    printf("  format rtr = %d\n", msg.RTR);
+    printf("  Length  = %d\n", msg.ln);
+    printf("  Data    = 0x");            
+    for(int i = 0 ; i < msg.ln ; i++){printf(" %.2X", msg.dt[i]);}
+    printf("\n");
+ }
 
 void remplirStruct(int idf, char lenf, char dt0f, char dt1f, char dt2f, char dt3f, char dt4f, char dt5f, char dt6f, char dt7f, CANMessage &theDATA){
   theDATA.RTR = false;

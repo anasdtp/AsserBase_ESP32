@@ -94,8 +94,8 @@
 /****************************************************************************************/
 /*                         Definition des informations du robot                         */
 /****************************************************************************************/ 
-#define LARGEUR_ROBOT 216.0  //214.4  244.5 213.9 209. 208.53 ancienne valeur 213.9 valeur 10 tours 260.17  //premier robot 213.9 
-#define PERIMETRE_ROUE_CODEUSE 124.6 //162.9    156.9 robot 1 // 160.9 robot 2      //theorique : 157
+//#define LARGEUR_ROBOT 217  //214.4  244.5 213.9 209. 208.53 ancienne valeur 213.9 valeur 10 tours 260.17  //premier robot 213.9 
+//#define PERIMETRE_ROUE_CODEUSE 124.58 //162.9    156.9 robot 1 // 160.9 robot 2      //theorique : 157
 #define COEF_ROUE_GAUCHE 1.0   //1.00595 - 0.9992505621    Petit virage à droite à gauche  ancien : 1.0100 / 1.0055
 #define COEF_ROUE_DROITE 1.0  //BLANC
 #define TE_100US 25          //Temps d'echantionnage -> 25 x 100US = 2.5ms
@@ -187,8 +187,9 @@ extern struct Ordre_deplacement liste;
 extern double   KppD, KipD, KdpD, KppG, KipG, KdpG,                             // Valeurs des correcteurs d'asservissement pour les G moteurs
                 KppDa, KipDa, KdpDa, KppGa, KipGa, KdpGa,
                 Kpp, Kip, Kdp;                       // Valeurs des correcteurs d'asservissement pour les 2 moteurs
-extern const double DTIC;   
-extern const double LARGEUR_ROBOT_TIC;                     // Valeurs des correcteurs d'asservissement pour les 2 moteurs
+extern double PERIMETRE_ROUE_CODEUSE, LARGEUR_ROBOT;
+extern double DTIC;   
+extern double LARGEUR_ROBOT_TIC;                     // Valeurs des correcteurs d'asservissement pour les 2 moteurs
 extern unsigned char tC1, tC2, tC3, tC4, tC5, nbexpr;
 extern volatile uint16_t mscount , mscount1 ,  mscount2;
     
@@ -200,6 +201,8 @@ const int PWM_MOTD = 18;    // PIN18
 const int PWM_MOTG = 17;    
 const int PWMDChannel = 3;
 const int PWMGChannel = 2;
+
+
 #endif
 /****************************************************************************************/
 //Sinon, détails : les angles sont exprimés en dixièmes de degrés quand il faut faire des calculs, ou quand ils faut les transmettre en CAN
