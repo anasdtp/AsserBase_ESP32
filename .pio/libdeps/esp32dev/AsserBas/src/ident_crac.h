@@ -51,6 +51,8 @@
 #define ASSERVISSEMENT_CONFIG_KPP_Qt 0x0FB  // Config coef KPP
 #define ASSERVISSEMENT_CONFIG_KPI_Qt 0x0FC  // Config coef KPI
 #define ASSERVISSEMENT_CONFIG_KPD_Qt 0x0FD  // Config coef KPD
+#define ASSERVISSEMENT_CONFIG_LARGEUR_ROBOT_Qt 0x0FE  // Config coef KPD
+#define ASSERVISSEMENT_CONFIG_PERIMETRE_ROUE_CODEUSE_Qt 0x0FF  // Config coef KPD
 #define ASSERVISSEMENT_ENABLE 0x1F7  // Activation asservissement  (0 : désactivation, 1 : activation)
 #define ASSERVISSEMENT_REQUETE_PID 0x1FB
 

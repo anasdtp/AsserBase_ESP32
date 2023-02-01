@@ -713,6 +713,25 @@ void CANloop(){
                 Serial.printf("%f ", Kd);
                 Serial.println();
                 break;
+            case ASSERVISSEMENT_CONFIG_LARGEUR_ROBOT_Qt :
+                LARGEUR_ROBOT = ((DATAtoControl.dt[0] << 24) | (DATAtoControl.dt[1] << 16) | 
+                                 (DATAtoControl.dt[2] << 8) | DATAtoControl.dt[3]) / 100.000;  
+                     
+                AsserInitCoefs(Kp, Ki, Kd); 
+                Serial.print("  ASSERVISSEMENT_CONFIG_LARGEUR_ROBOT_Qt: ");
+                Serial.printf("%f ", LARGEUR_ROBOT);
+                Serial.println();
+                break;
+            case ASSERVISSEMENT_CONFIG_PERIMETRE_ROUE_CODEUSE_Qt :
+                PERIMETRE_ROUE_CODEUSE= ((DATAtoControl.dt[0] << 24) | (DATAtoControl.dt[1] << 16) | 
+                                         (DATAtoControl.dt[2] << 8) | DATAtoControl.dt[3]) / 100.000;  
+                     
+                AsserInitCoefs(Kp, Ki, Kd); 
+                Serial.print("  ASSERVISSEMENT_CONFIG_PERIMETRE_ROUE_CODEUSE_Qt : ");
+                Serial.printf("%f ", PERIMETRE_ROUE_CODEUSE);
+                Serial.println();
+                break;
+            
 //---------------------------------------------
             case ASSERVISSEMENT_CONFIG_PERIMETRE_ROUE_CODEUSE :
                 memcpy(&PERIMETRE_ROUE_CODEUSE, DATAtoControl.dt, 8);
