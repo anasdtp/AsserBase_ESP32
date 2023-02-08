@@ -175,6 +175,7 @@ void loop() {
   }
   else 
   {
+    
     while (mscount<(TE_100US)){
         
     }
@@ -620,8 +621,14 @@ void CANloop(){
     
     switch (DATAtoControl.ID)
     {
+
+            case ESP32_RESTART:
+                Serial.println("ESP32_RESTART");
+                esp_restart();
+                
+                break;
             case ASSERVISSEMENT_REQUETE_PID:
-                //Serial.println("ASSERVISSEMENT_REQUETE_PID");
+                Serial.println("ASSERVISSEMENT_REQUETE_PID");
                 CANenvoiMsg1x8Bytes(ASSERVISSEMENT_CONFIG_KPP, &KppD);
                 CANenvoiMsg1x8Bytes(ASSERVISSEMENT_CONFIG_KPI, &KipD);
                 CANenvoiMsg1x8Bytes(ASSERVISSEMENT_CONFIG_KPD, &KdpD);
@@ -684,55 +691,7 @@ void CANloop(){
                 Serial.printf("%f ", Kd);
                 Serial.println();
                 break;
-//---------------------------------------------Qt
-            case ASSERVISSEMENT_CONFIG_KPP_Qt:{
-                Kp = ((DATAtoControl.dt[0] << 24) | (DATAtoControl.dt[1] << 16) | 
-                      (DATAtoControl.dt[2] << 8) | DATAtoControl.dt[3]) / 1000.000;  
-                
-                AsserInitCoefs(Kp, Ki, Kd);
-                Serial.print("  ASSERVISSEMENT_CONFIG_KPP Qt: ");
-                Serial.printf("%f ", Kp);
-                Serial.println();
-                }
-                break;
-            case ASSERVISSEMENT_CONFIG_KPI_Qt :
-                Ki = ((DATAtoControl.dt[0] << 24) | (DATAtoControl.dt[1] << 16) | 
-                      (DATAtoControl.dt[2] << 8) | DATAtoControl.dt[3]) / 1000.000;  
 
-                AsserInitCoefs(Kp, Ki, Kd);
-                Serial.print("  ASSERVISSEMENT_CONFIG_KPI Qt: ");
-                Serial.printf("%f ", Ki);
-                Serial.println();
-                break;
-            case ASSERVISSEMENT_CONFIG_KPD_Qt :
-                Kd= ((DATAtoControl.dt[0] << 24) | (DATAtoControl.dt[1] << 16) | 
-                      (DATAtoControl.dt[2] << 8) | DATAtoControl.dt[3]) / 1000.000;  
-                     
-                AsserInitCoefs(Kp, Ki, Kd); 
-                Serial.print("  ASSERVISSEMENT_CONFIG_KPD Qt: ");
-                Serial.printf("%f ", Kd);
-                Serial.println();
-                break;
-            case ASSERVISSEMENT_CONFIG_LARGEUR_ROBOT_Qt :
-                LARGEUR_ROBOT = ((DATAtoControl.dt[0] << 24) | (DATAtoControl.dt[1] << 16) | 
-                                 (DATAtoControl.dt[2] << 8) | DATAtoControl.dt[3]) / 100.000;  
-                     
-                AsserInitCoefs(Kp, Ki, Kd); 
-                Serial.print("  ASSERVISSEMENT_CONFIG_LARGEUR_ROBOT_Qt: ");
-                Serial.printf("%f ", LARGEUR_ROBOT);
-                Serial.println();
-                break;
-            case ASSERVISSEMENT_CONFIG_PERIMETRE_ROUE_CODEUSE_Qt :
-                PERIMETRE_ROUE_CODEUSE= ((DATAtoControl.dt[0] << 24) | (DATAtoControl.dt[1] << 16) | 
-                                         (DATAtoControl.dt[2] << 8) | DATAtoControl.dt[3]) / 100.000;  
-                     
-                AsserInitCoefs(Kp, Ki, Kd); 
-                Serial.print("  ASSERVISSEMENT_CONFIG_PERIMETRE_ROUE_CODEUSE_Qt : ");
-                Serial.printf("%f ", PERIMETRE_ROUE_CODEUSE);
-                Serial.println();
-                break;
-            
-//---------------------------------------------
             case ASSERVISSEMENT_CONFIG_PERIMETRE_ROUE_CODEUSE :
                 memcpy(&PERIMETRE_ROUE_CODEUSE, DATAtoControl.dt, 8);
                 AsserInitCoefs(Kp, Ki, Kd); 
@@ -1052,6 +1011,180 @@ void CANloop(){
                 //CANenvoiMsg(ALIVE_MOTEUR);
             }
             break;
+
+//---------------------------------------------Qt
+            case ASSERVISSEMENT_CONFIG_KPP_Qt:{
+                Kp = ((DATAtoControl.dt[0] << 24) | (DATAtoControl.dt[1] << 16) | 
+                      (DATAtoControl.dt[2] << 8) | DATAtoControl.dt[3]) / 1000.000;  
+                
+                AsserInitCoefs(Kp, Ki, Kd);
+                Serial.print("  ASSERVISSEMENT_CONFIG_KPP Qt: ");
+                Serial.printf("%f ", Kp);
+                Serial.println();
+                }
+                break;
+            case ASSERVISSEMENT_CONFIG_KPI_Qt :
+                Ki = ((DATAtoControl.dt[0] << 24) | (DATAtoControl.dt[1] << 16) | 
+                      (DATAtoControl.dt[2] << 8) | DATAtoControl.dt[3]) / 1000.000;  
+
+                AsserInitCoefs(Kp, Ki, Kd);
+                Serial.print("  ASSERVISSEMENT_CONFIG_KPI Qt: ");
+                Serial.printf("%f ", Ki);
+                Serial.println();
+                break;
+            case ASSERVISSEMENT_CONFIG_KPD_Qt :
+                Kd= ((DATAtoControl.dt[0] << 24) | (DATAtoControl.dt[1] << 16) | 
+                      (DATAtoControl.dt[2] << 8) | DATAtoControl.dt[3]) / 1000.000;  
+                     
+                AsserInitCoefs(Kp, Ki, Kd); 
+                Serial.print("  ASSERVISSEMENT_CONFIG_KPD Qt: ");
+                Serial.printf("%f ", Kd);
+                Serial.println();
+                break;
+            case ASSERVISSEMENT_CONFIG_LARGEUR_ROBOT_Qt :
+                LARGEUR_ROBOT = ((DATAtoControl.dt[0] << 24) | (DATAtoControl.dt[1] << 16) | 
+                                 (DATAtoControl.dt[2] << 8) | DATAtoControl.dt[3]) / 100.000;  
+                     
+                AsserInitCoefs(Kp, Ki, Kd); 
+                Serial.print("  ASSERVISSEMENT_CONFIG_LARGEUR_ROBOT_Qt: ");
+                Serial.printf("%f ", LARGEUR_ROBOT);
+                Serial.println();
+                break;
+            case ASSERVISSEMENT_CONFIG_PERIMETRE_ROUE_CODEUSE_Qt :
+                PERIMETRE_ROUE_CODEUSE= ((DATAtoControl.dt[0] << 24) | (DATAtoControl.dt[1] << 16) | 
+                                         (DATAtoControl.dt[2] << 8) | DATAtoControl.dt[3]) / 100.000;  
+                     
+                AsserInitCoefs(Kp, Ki, Kd); 
+                Serial.print("  ASSERVISSEMENT_CONFIG_PERIMETRE_ROUE_CODEUSE_Qt : ");
+                Serial.printf("%f ", PERIMETRE_ROUE_CODEUSE);
+                Serial.println();
+                break;
+            case ASSERVISSEMENT_ROTATION_Qt:
+            {
+                /* `#START MESSAGE_Rotation_RECEIVED` */
+                stop_receive = 0;
+                Serial.print("  ASSERVISSEMENT_ROTATION_Qt : ");
+                liste = (struct Ordre_deplacement){TYPE_DEPLACEMENT_IMMOBILE,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+                nb_ordres = 0;
+                cpt_ordre = 0;
+
+                int16_t angle = (DATAtoControl.dt[0] << 8) | DATAtoControl.dt[1];
+        
+                liste.type = TYPE_DEPLACEMENT_ROTATION;
+                liste.angle = LARGEUR_ROBOT * M_PI * RESOLUTION_ROUE_CODEUSE * angle / (3600 * PERIMETRE_ROUE_CODEUSE);
+                liste.vmax = VMAX;
+                liste.amax = AMAX;
+                //Serial.println("ACKNOWLEDGE_MOTEUR");
+                remplirStruct(ACKNOWLEDGE_MOTEUR, 2, 0x23, 0,0,0,0,0,0,0, DATArobot);
+                writeStructInCAN(DATArobot);
+                //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x23, 0);
+                
+            }
+            break;  
+
+            case ASSERVISSEMENT_RECALAGE_Qt:
+            {
+                stop_receive = 0;
+                Serial.print("  ASSERVISSEMENT_RECALAGE_Qt : ");
+                int16_t distance = (DATAtoControl.dt[0] << 8) | DATAtoControl.dt[1];
+
+                    //On vide le buffer de mouvements
+                    liste = (struct Ordre_deplacement){TYPE_DEPLACEMENT_IMMOBILE,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+                    nb_ordres = 0;
+                    cpt_ordre = 0;
+                    liste.type = TYPE_DEPLACEMENT_LIGNE_DROITE;
+                    liste.distance = (distance * RESOLUTION_ROUE_CODEUSE) / PERIMETRE_ROUE_CODEUSE;
+                    liste.vmax = VMAX;
+                    liste.amax = AMAX;
+                    liste.enchainement = 0;
+
+                    remplirStruct(ACKNOWLEDGE_MOTEUR, 2, 0x24, 0,0,0,0,0,0,0, DATArobot);
+                    writeStructInCAN(DATArobot);
+                    //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x24, 0);
+                
+            }
+            break;
+            case ASSERVISSEMENT_XYT_Qt :
+            {
+                    // `#START MESSAGE_X_Y_Theta_RECEIVED` 
+                    stop_receive = 0;
+                    Serial.print("  ASSERVISSEMENT_XYT_Qt : ");
+                    //On vide le buffer de mouvements
+                    liste = (struct Ordre_deplacement){TYPE_DEPLACEMENT_IMMOBILE,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+                    nb_ordres = 0;
+                    cpt_ordre = 0;//ne sert à rien mais au cas où, au futur...
+
+                    liste.x = (DATAtoControl.dt[0] << 8) | DATAtoControl.dt[1];
+                    liste.y = (DATAtoControl.dt[2] << 8) | DATAtoControl.dt[3];
+                    liste.theta = (DATAtoControl.dt[4] << 8) | DATAtoControl.dt[5];
+                    liste.sens =  DATAtoControl.dt[6];
+
+                    Serial.printf("\nX = %d, Y = %d, theta = %d sens = %d\n", liste.x, liste.y, liste.theta, liste.sens);
+
+                    liste.type = TYPE_DEPLACEMENT_X_Y_THETA;
+                    liste.vmax = VMAX;
+                    liste.amax = AMAX;        
+                    //Serial.println("ACKNOWLEDGE_MOTEUR");
+                    remplirStruct(ACKNOWLEDGE_MOTEUR, 2, 0x20, 0,0,0,0,0,0,0, DATArobot);
+                    writeStructInCAN(DATArobot);    
+                    //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x20, 0);
+            }
+            break;
+            case ASSERVISSEMENT_COURBURE_Qt:
+            {
+                /* `#START MESSAGE_Rayon_de_courbure_RECEIVED` */
+                stop_receive = 0;
+                Serial.print("  ASSERVISSEMENT_COURBURE_Qt : ");
+                int16_t rayon = (DATAtoControl.dt[0] << 8) | DATAtoControl.dt[1];
+                int16_t theta = (DATAtoControl.dt[2] << 8) | DATAtoControl.dt[3];
+                uint8_t sens = DATAtoControl.dt[4];
+                uint8_t enchainement = 0;
+                uint8_t speedRatio = 0;
+        
+                if (enchainement)
+                {
+                    liste.type = TYPE_DEPLACEMENT_RAYON_COURBURE_CLOTHOIDE;
+                    liste.rayon = rayon;
+                    liste.theta_ray = theta;
+                    liste.sens = sens;
+                    liste.vmax = VMAX;
+                    liste.amax = AMAX_CLO;
+                    liste.dmax = DMAX;
+                    liste.enchainement = enchainement;
+                    liste.vinit = VMAX;//(long)((long)(VMAX)*(long)(speedRatio))>>8;
+                    nb_ordres++;
+            
+                    if(enchainement == (2 || 1)) // ERREUR ?!?
+                    {
+                        //Serial.println("ACKNOWLEDGE_MOTEUR");
+                        remplirStruct(ACKNOWLEDGE_MOTEUR, 2, 0x21, 0,0,0,0,0,0,0, DATArobot);
+                        writeStructInCAN(DATArobot);
+                        //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x21, 0 /* enchainement<<3 */);                
+                    }
+                }
+                else
+                {
+                    liste = (struct Ordre_deplacement){TYPE_DEPLACEMENT_IMMOBILE,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+                    nb_ordres = 0;
+                    cpt_ordre = 0;
+                    liste.type = TYPE_DEPLACEMENT_RAYON_COURBURE;
+                    liste.rayon = rayon;
+                    liste.theta_ray = theta;
+                    liste.sens = sens;
+                    liste.vmax = VMAX;
+                    liste.amax = AMAX;
+                    liste.enchainement = enchainement;
+                    //Serial.println("ACKNOWLEDGE_MOTEUR");
+                    remplirStruct(ACKNOWLEDGE_MOTEUR, 2, 0x21, 0,0,0,0,0,0,0, DATArobot);
+                    writeStructInCAN(DATArobot);
+                    //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x21, 0);
+                }
+        
+            }
+            break;  
+            
+            
+//---------------------------------------------
 
             case 0x00:
             {
@@ -2771,7 +2904,7 @@ void remplirStruct(int idf, char lenf, char dt0f, char dt1f, char dt2f, char dt3
   if(idf>0x7FF){theDATA.extented = true;}
   else{theDATA.extented = false;}
   theDATA.ID = idf;
-  theDATA.ln = idf;
+  theDATA.ln = lenf;
   theDATA.dt[0] = dt0f;
   theDATA.dt[1] = dt1f;
   theDATA.dt[2] = dt2f;
