@@ -1,10 +1,11 @@
 //----------------------------------------------------------------------Bibliotheques
 #include <Arduino.h>
-#include "espBLEcan.h"
-#include "CRAC_utility.h"
-#include "ident_crac.h"
-#include "buffer_circulaire.h"
-#include "clotho.h"
+#include "AsserBas/src/espBLEcan.h"
+#include "AsserBas/src/CRAC_utility.h"
+#include "AsserBas/src/ident_crac.h"
+#include "AsserBas/src/buffer_circulaire.h"
+#include "AsserBas/src/clotho.h"
+#include "math.h"
 
 //----------------------------------------------------------------------Variables
 
@@ -58,9 +59,7 @@ double Kp =8    , Ki =0.0, Kd =35.0;
 struct Ordre_deplacement liste;
 clothoStruc maClotho;
 //----------------------------------------------------------------------Timer
-static char idTimer = 0; //le numéro du Timer de 0 à 3
-static int prescaler = 8000; // la valeur du diviseur de temps
-bool flag = true; //vrai pour compter sur le front montant, faux pour compter sur le front descendant
+
 int totalInterrupts = 0;   // compte le nombre de declenchement de l alarme
 hw_timer_t * timer = NULL;
 portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
@@ -140,8 +139,11 @@ void setup() {
   Serial.printf("fin moteur init\n");
   AsserInitCoefs(Kp, Ki, Kd);
   Asser_Init();
+  //Interruption : le programme est cadence grâce a l'interrutpion du Timer
   init_Timer();
   Serial.printf("fin init Timer\n");
+
+  
   remplirStruct(ALIVE_MOTEUR,0,0,0,0,0,0,0,0,0, DATArobot);
   writeStructInCAN(DATArobot);
   Serial.printf("envoie CAN ALIVE_MOTEUR\n");
@@ -149,6 +151,7 @@ void setup() {
   
   /*liste.type = TYPE_DEPLACEMENT_LIGNE_DROITE;//test
   liste.distance = 1000;*/
+  mscount = 0;
 }
 //----------------------------------------------------------------------loop
 void loop() {
@@ -176,14 +179,12 @@ void loop() {
   else 
   {
     
-    while (mscount<(TE_100US)){
-        
-    }
+    while (mscount<(TE_100US));
     
   }
 
   //digitalWrite(27, set);//pour mesurer le temps de boucle avec l'oscilloscope
-  //set = !set;
+  //set = !set; temps de boucle = 1/(freq/2)
 
   BtActualise();
   mscount = 0;    
@@ -209,7 +210,21 @@ void loop() {
                     short x, y, theta;
                     signed char sens;
                     short rayon, vit_ray, theta_ray;
-                };
+                };La fonction est la boucle principale qui gère la robotique de l'application. 
+                Elle est appelée périodiquement et s'assure que la liste des ordres est remplie par l'ISR CAN. 
+                Cette liste est basée sur la structure "Ordre_deplacement". 
+                La fonction détermine le prochain mouvement à effectuer à partir de la liste des ordres, 
+                et appelle la fonction correspondante pour l'exécuter.
+                Le mouvement à effectuer est basé sur le type de mouvement indiqué dans la structure "Ordre_deplacement". 
+                Le mouvement peut être une ligne droite, une rotation, un mouvement sur les axes x, y et theta, ou un mouvement 
+                sur un rayon de courbure. La fonction utilise également une série de commutateurs pour exécuter les mouvements 
+                et les contrôler en temps réel. Le premier commutateur est destiné à l'état précédent et compare l'état actuel 
+                à l'état précédent pour déterminer si un changement d'état s'est produit. Le deuxième commutateur est destiné à 
+                l'automate de déplacement précédent et utilise un état pour savoir si le robot est en mouvement ou non. 
+                La fonction arrête le robot lorsque le mouvement suivant est "TYPE_END_GAME", lorsque le robot n'est pas asservi 
+                ou lorsque le match est terminé. En outre, la fonction envoie des messages de débogage à l'aide de CANenvoiMsg1Byte(), 
+                qui envoie un message CAN d'une longueur de 1 octet. Les messages de débogage sont destinés à fournir des informations 
+                de débogage pour le débogage en temps réel de l'application. (Merci ChatGPT)
 ***************************************************************************************/
 void calcul(void){//fait!!
     static int cpt_stop = 0;
@@ -1087,7 +1102,7 @@ void CANloop(){
                 stop_receive = 0;
                 Serial.print("  ASSERVISSEMENT_RECALAGE_Qt : ");
                 int16_t distance = (DATAtoControl.dt[0] << 8) | DATAtoControl.dt[1];
-
+                Serial.printf("  distance : %d\n ", distance);
                     //On vide le buffer de mouvements
                     liste = (struct Ordre_deplacement){TYPE_DEPLACEMENT_IMMOBILE,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
                     nb_ordres = 0;
@@ -1220,7 +1235,41 @@ void CANloop(){
             short dmax -> deceleration maximale                                      
             char mvt -> choix entre rotation et ligne droite                          
  RETOUR : rien                                                                        
- DESCRIPTIF : Fonction appelee pour effectuer une ligne droite                        
+ DESCRIPTIF : Fonction appelee pour effectuer une ligne droite       
+
+ Cette fonction nommée "Mouvement_Elementaire" prend en entrée un long, pcons, un char, mvt, et trois shorts, vmax, amax et dmax. Elle n'a pas de sortie. Voici une description de la fonction par section:
+
+Déclaration des variables: Les variables déclarées sont:
+tc: temps de déplacement à vitesse constante
+ta: temps d'accelération
+td: temps de décélération
+vmax_tri: vitesse maximale atteinte dans le cas d'un profil en triangle
+accel: accélération (valeur du paramètre amax divisé par 1000)
+decel: décélération (valeur du paramètre dmax divisé par 1000)
+pos_triangle: position dans le profil de mouvement où la vitesse maximale est atteinte
+memo_etat_automate: état précédent de l'automate (initialisé à 0)
+defaut_asserv: défaut d'asservissement (initialisé à 0)
+Switch statement pour l'automate de gestion du déplacement:
+
+Case INITIALISATION: 
+remise à zéro des variables de consigne de position et de vitesse, du compteur, et de defaut_asserv. 
+Détermination du temps d'accelération (ta) et de décélération (td) en fonction de vmax, amax et dmax. 
+Calcul de la position (pos_triangle) dans le profil de mouvement où la vitesse maximale est atteinte. 
+Si cette position est inférieure en valeur absolue à pcons, on utilise un profil de trapèze. 
+Sinon, on utilise un profil de triangle. Envoi d'un message CAN contenant la consigne de position et 
+le nombre de pas de codeurs.
+Case ACCELERATION_TRAPEZE: incrémentation de la consigne de vitesse par la valeur de l'acceleration, 
+puis incrémentation de la consigne de position. Si le compteur atteint ta, l'automate passe à l'état 
+VITESSE_CONSTANTE_TRAPEZE, le compteur est remis à zéro, et la consigne de vitesse est mise à vmax.
+Case VITESSE_CONSTANTE_TRAPEZE: incrémentation de la consigne de position. Si le compteur atteint tc 
+(temps de déplacement à vitesse constante), l'automate passe à l'état DECELERATION_TRAPEZE, le compteur 
+est remis à zéro.
+Case DECELERATION_TRAPEZE: décrémentation de la consigne de vitesse par la valeur de la décélération, 
+puis incrémentation de la consigne de position. Si le compteur atteint td (temps de décélération), 
+l'automate passe à l'état ARRET, le compteur est remis à zéro, et le défaut d'asservissement est mis à 0.
+Les commentaires dans le code indiquent que la fonction était utilisée pour piloter un robot sur une ligne. 
+On y trouve des appels à des fonctions pour envoyer des messages CAN qui doivent communiquer avec d'autres 
+éléments du système.                 (ChatGPT encore)
 ***************************************************************************************/
 void Mouvement_Elementaire(long pcons, short vmax, short amax, short dmax, char mvt)
 {    
@@ -1493,6 +1542,26 @@ void Mouvement_Elementaire(long pcons, short vmax, short amax, short dmax, char 
               Pour le reste, c'est comme une ligne droite,                            
               Sauf que la distance à parcourir (pour la ext) est                      
               celle de l'arc de cercle : (rayon + largeur/2) * angle à parcourir      
+
+
+              Cette fonction "Rayon_De_Courbure" permet de faire avancer le robot en suivant un arc de cercle. 
+              Elle prend en entrée le rayon de l'arc de cercle à parcourir, l'angle à parcourir (en dixièmes de degré), 
+              la vitesse maximale, la décélération maximale, l'accélération maximale et le sens de déplacement. 
+              La fonction ne renvoie rien.
+              Le principe est de faire avancer le robot en suivant un arc de cercle situé à une distance rayon du centre du robot. 
+              Pour cela, la roue intérieure dans le cercle va moins avancer que l'autre roue. Le rapport de distance entre les 2 roues 
+              est calculé par : distance de la roue intérieure par rapport au centre du cercle, divisé par distance de la roue 
+              extérieure par rapport au centre.
+              La fonction utilise un automate pour gérer le déplacement. Elle commence par l'état d'initialisation et de calcul
+               des variables, où elle remet à zéro les variables de consigne de position et de vitesse et calcule la position voulue. 
+               Elle calcule également le rapport pour la roue qui parcourt la plus petite distance et le profil de vitesse 
+               (taux d'accélération, temps d'accélération et de décélération). Si la distance à parcourir est inférieure à une certaine 
+               valeur, la fonction utilise un profil de trapèze. Sinon, elle utilise un profil de triangle.
+               Ensuite, la fonction passe à l'état d'acceleration en profil trapeze, où elle incrémente la consigne de vitesse par 
+               la valeur de l'acceleration et la consigne de position. Lorsque le temps d'acceleration est atteint, la fonction passe 
+               à l'état de vitesse constante en profil trapeze, où la consigne de vitesse est constante. Lorsque le robot doit commencer 
+               à décélérer, la fonction passe à l'état de deceleration en profil trapeze, où elle décélère jusqu'à s'arrêter. 
+               Lorsque le robot est à l'arrêt, la fonction est terminée.  (Merci)
 ***************************************************************************************/
 void Rayon_De_Courbure(short rayon, short theta, short vmax, short amax, short sens, short dmax) //fait
 {
@@ -1817,6 +1886,17 @@ void trait_Mouvement_Elementaire_Gene(struct Ordre_deplacement* monDpl)//fait
     //CANenvoiMsg1Byte(ID_TRAIT_LIGNE_GENE, 2);
     #endif
 }
+
+/**
+ * 
+ * 
+ * 1 Mesurez la distance entre le robot et l'objet, et utilisez cette distance pour déterminer le rayon de courbure de la clothoïde. 
+ * 2 Plus l'objet est proche, plus la courbure de la clothoïde doit être grande.
+ * 3 Déterminez la position cible que le robot doit atteindre pour éviter l'obstacle. 
+ * 4 Cette position sera située sur la trajectoire en clothoïde.
+ * 5 Planifiez la trajectoire en clothoïde en utilisant le rayon de courbure et la position cible.
+ * 6 Faites avancer le robot en suivant la trajectoire en clothoïde.
+ * 7 Répétez les étapes 1 à 4 jusqu'à ce que le robot atteigne sa destination finale.**/
 void trait_Rayon_De_Courbure_Clotho(struct Ordre_deplacement* monDpl)
 {
     unsigned long tc, ta, td;   //tc temps à vitesse constante, ta en acceleration, td en deceleration, temp en nombre d'étt d'automate
@@ -2429,7 +2509,7 @@ void X_Y_Theta(long px, long py, long ptheta, long sens, short vmax, short amax)
                 //Serial.println("INSTRUCTION_END_MOTEUR");
                 remplirStruct(INSTRUCTION_END_MOTEUR, 2, 0x30, 0x00,0,0,0,0,0,0, DATArobot);
                 writeStructInCAN(DATArobot);
-                ////CANenvoiMsg2x1Byte(INSTRUCTION_END_MOTEUR, 0x30, 0);
+                //CANenvoiMsg2x1Byte(INSTRUCTION_END_MOTEUR, 0x30, 0);
                 
                 etat_automate_xytheta = LIGNE_DROITE_X_Y_THETA; //Passage a l'etat LIGNE_DROITE_X_Y_THETA
             }
@@ -2789,8 +2869,8 @@ void Odometrie(void)//fait
     //Condition d'envoi des informations de l'odometrie par CAN 
     if(mscount1 >= (500/TE_100US))//toutes les 50ms
     {
-        digitalWrite(27, set);//pour mesurer le temps de mscount1 avec l'oscilloscope
-        set = !set;
+        // digitalWrite(27, set);//pour mesurer le temps de mscount1 avec l'oscilloscope
+        // set = !set;
         mscount1 = 0;
         //Serial.println();
         //Serial.printf("Codeur D : %lf ; Codeur G : %lf erreur : %lf\n", Odo_val_pos_D, Odo_val_pos_G, erreur);
@@ -3092,8 +3172,11 @@ void onTime() {//fonction s'exécutent à chaque interruptions
    mscount++;
    
 }
-
+//Timer
 void init_Timer(){
+  static char idTimer = 0; //le numéro du Timer de 0 à 3
+  static int prescaler = 8000; // la valeur du diviseur de temps
+  bool flag = true; //vrai pour compter sur le front montant, faux pour compter sur le front descendant
     // Configure le Prescaler a 80 le quartz de l ESP32 est cadence a 80Mhz => à vérifier pour l'esp32-32E, peut etre 40Mhz?
    // 80000000 / 80 = 1000000 tics / seconde
    timer = timerBegin(idTimer, prescaler, flag);
@@ -3102,8 +3185,8 @@ void init_Timer(){
    // Regle le declenchement d une alarme chaque seconde
    timerAlarmWrite(timer, 1, true);      //freq de 250 000 Hz    
    timerAlarmEnable(timer); //active l'alarme
+   Serial.println("Fin init Timer");
 }
-
 void init_coef(){
     double k = TE/0.02;
     VMAX = Vmax_coef*k;       // 50       petit 600   gros 600
