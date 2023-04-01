@@ -19,7 +19,7 @@ double last_ErreurPosD = 0, Somme_ErreurPosD = 0, ErreurPosD = 0;
 double last_ErreurPosG = 0, Somme_ErreurPosG = 0, ErreurPosG = 0;
 double last_Delta_ErreurPos = 0, somme_Delta_ErreurPos = 0, Delta_ErreurPos = 0;
 
-double PERIMETRE_ROUE_CODEUSE = 165, LARGEUR_ROBOT = 222; //robot test : perimetre : 124.58, largeur : 217
+double PERIMETRE_ROUE_CODEUSE = 161.45, LARGEUR_ROBOT = 215.45; //robot test : perimetre : 124.58, largeur : 217 // 155.63 // 162.9
 
 double DTIC = PERIMETRE_ROUE_CODEUSE / RESOLUTION_ROUE_CODEUSE;                                // longeur d'un tic de roue codeuse, en mm
 double LARGEUR_ROBOT_TIC = LARGEUR_ROBOT / (PERIMETRE_ROUE_CODEUSE / RESOLUTION_ROUE_CODEUSE); // largeur du robot en tic   //c'est pour harmoniser les unités
