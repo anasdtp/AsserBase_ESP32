@@ -1,7 +1,7 @@
 //----------------------------------------------------------------------Bibliotheques
 #include <Arduino.h>
 #include "CRAC_utility.h"
-#include <CAN/src/CAN.h>
+#include <CAN.h>
 #include <BLEDevice.h>
 #include <BLEServer.h>
 #include <BLEUtils.h>

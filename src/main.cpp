@@ -1,10 +1,10 @@
 //----------------------------------------------------------------------Bibliotheques
 #include <Arduino.h>
-#include "AsserBas/src/espBLEcan.h"
-#include "AsserBas/src/CRAC_utility.h"
-#include "AsserBas/src/ident_crac.h"
-#include "AsserBas/src/buffer_circulaire.h"
-#include "AsserBas/src/clotho.h"
+#include "espBLEcan.h"
+#include "CRAC_utility.h"
+#include "ident_crac.h"
+#include "buffer_circulaire.h"
+#include "clotho.h"
 #include "math.h"
 
 //----------------------------------------------------------------------Variables
@@ -130,7 +130,7 @@ void setup() {
   init_coef();
   setupCAN();
   //Init BLE device
-  masterBTConnect("BaseRoulante");
+  masterBTConnect("BaseRoulanteGE1");
   Serial.printf("fin ble init\n"); //Ne pas rajouter de Serial.printx dans le loop 
                                   //sinon cela augmente le temps de loop on risque d'avoir un TE faux
   Encodeur_Init();
@@ -453,7 +453,7 @@ void calcul(void){//fait!!
             if (finRecalage){
                 liste.type = (TYPE_MOUVEMENT_SUIVANT);
                 finRecalage = 0;
-                remplirStruct(DATArobot,INSTRUCTION_END_MOTEUR, 2, (Message_Fin_Mouvement&0xFF), ((Message_Fin_Mouvement>>8)&0xFF),0,0,0,0,0,0);
+                remplirStruct(DATArobot,INSTRUCTION_END_MOTEUR, 2, ASSERVISSEMENT_RECALAGE, 0,0,0,0,0,0,0);
                 writeStructInCAN(DATArobot);
             }
             /*else if (stop_receive){
@@ -765,7 +765,7 @@ void CANloop(){
                     DMAX = ((double)DATAtoControl.dt[2]+256*DATAtoControl.dt[3])*k*k;
                     ralentare = 1;
                     //Serial.println("ACKNOWLEDGE_MOTEUR");
-                    remplirStruct(DATArobot,ACKNOWLEDGE_MOTEUR, 2, 0x19, 0,0,0,0,0,0,0);
+                    remplirStruct(DATArobot,ACKNOWLEDGE_MOTEUR, 2, ASSERVISSEMENT_DECEL, 0,0,0,0,0,0,0);
                     writeStructInCAN(DATArobot);
                     //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x19, 0);
                 }
@@ -789,7 +789,7 @@ void CANloop(){
                     liste.vmax = VMAX;
                     liste.amax = AMAX;        
                     //Serial.println("ACKNOWLEDGE_MOTEUR");
-                    remplirStruct(DATArobot,ACKNOWLEDGE_MOTEUR, 2, 0x20, 0,0,0,0,0,0,0);
+                    remplirStruct(DATArobot,ACKNOWLEDGE_MOTEUR, 2, ASSERVISSEMENT_XYT, 0,0,0,0,0,0,0);
                     writeStructInCAN(DATArobot);    
                     //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x20, 0);
             }
@@ -857,7 +857,7 @@ void CANloop(){
                 ralentare = 1;
         
                 //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x22, 0);
-                remplirStruct(DATArobot,ACKNOWLEDGE_MOTEUR, 2, 0x22, 0,0,0,0,0,0,0);
+                remplirStruct(DATArobot,ACKNOWLEDGE_MOTEUR, 2, ASSERVISSEMENT_CONFIG, 0,0,0,0,0,0,0);
                 writeStructInCAN(DATArobot);
             }
             break;
@@ -877,7 +877,7 @@ void CANloop(){
                 liste.vmax = VMAX;
                 liste.amax = AMAX;
                 //Serial.println("ACKNOWLEDGE_MOTEUR");
-                remplirStruct(DATArobot,ACKNOWLEDGE_MOTEUR, 2, 0x23, 0,0,0,0,0,0,0);
+                remplirStruct(DATArobot,ACKNOWLEDGE_MOTEUR, 2, ASSERVISSEMENT_ROTATION, 0,0,0,0,0,0,0);
                 writeStructInCAN(DATArobot);
                 //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x23, 0);
                 
@@ -908,7 +908,7 @@ void CANloop(){
                     liste.val_recalage = valRecalage;
                     liste.recalage = mode;
 
-                    remplirStruct(DATArobot,ACKNOWLEDGE_MOTEUR, 2, 0x24, 0,0,0,0,0,0,0);
+                    remplirStruct(DATArobot,ACKNOWLEDGE_MOTEUR, 2, ASSERVISSEMENT_RECALAGE, 0,0,0,0,0,0,0);
                     writeStructInCAN(DATArobot);
                     //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x24, 0);
                 }
@@ -940,7 +940,7 @@ void CANloop(){
             
                     if (enchainement == 2 ||1)  // ERREUR ?!?
                     {
-                        remplirStruct(DATArobot,ACKNOWLEDGE_MOTEUR, 2, 0x24, 0,0,0,0,0,0,0);
+                        remplirStruct(DATArobot,ACKNOWLEDGE_MOTEUR, 2, ASSERVISSEMENT_RECALAGE, 0,0,0,0,0,0,0);
                         writeStructInCAN(DATArobot);
                         //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x24, 0 /* enchainement<<3 */);
                     }
@@ -959,7 +959,7 @@ void CANloop(){
                     liste.amax = AMAX;
                     liste.enchainement = enchainement;
 
-                    remplirStruct(DATArobot,ACKNOWLEDGE_MOTEUR, 2, 0x24, 0,0,0,0,0,0,0);
+                    remplirStruct(DATArobot,ACKNOWLEDGE_MOTEUR, 2, ASSERVISSEMENT_RECALAGE, 0,0,0,0,0,0,0);
                     writeStructInCAN(DATArobot);
                     //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x24, 0);
                 }
@@ -1097,141 +1097,12 @@ void CANloop(){
                 Serial.printf("%f ", PERIMETRE_ROUE_CODEUSE);
                 Serial.println();
                 break;
-            case ASSERVISSEMENT_ROTATION_Qt:
-            {
-                /* `#START MESSAGE_Rotation_RECEIVED` */
-                stop_receive = 0;
-                Serial.print("  ASSERVISSEMENT_ROTATION_Qt : ");
-                liste = (struct Ordre_deplacement){TYPE_DEPLACEMENT_IMMOBILE,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-                nb_ordres = 0;
-                cpt_ordre = 0;
+            case IDCAN_POS_XY_OBJET:{
 
-                int16_t angle = (DATAtoControl.dt[0] << 8) | DATAtoControl.dt[1];
-        
-                liste.type = TYPE_DEPLACEMENT_ROTATION;
-                liste.angle = LARGEUR_ROBOT * M_PI * RESOLUTION_ROUE_CODEUSE * angle / (3600 * PERIMETRE_ROUE_CODEUSE);
-                liste.vmax = VMAX;
-                liste.amax = AMAX;
-                //Serial.println("ACKNOWLEDGE_MOTEUR");
-                remplirStruct(DATArobot,ACKNOWLEDGE_MOTEUR, 2, 0x23, 0,0,0,0,0,0,0);
-                writeStructInCAN(DATArobot);
-                //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x23, 0);
-                
-            }
-            break;  
-
-            case ASSERVISSEMENT_RECALAGE_Qt:
-            {
-                stop_receive = 0;
-                Serial.print("  ASSERVISSEMENT_RECALAGE_Qt : ");
-                int16_t distance = (DATAtoControl.dt[0] << 8) | DATAtoControl.dt[1];
-                Serial.printf("  distance : %d\n ", distance);
-                    //On vide le buffer de mouvements
-                    liste = (struct Ordre_deplacement){TYPE_DEPLACEMENT_IMMOBILE,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-                    nb_ordres = 0;
-                    cpt_ordre = 0;
-                    liste.type = TYPE_DEPLACEMENT_LIGNE_DROITE;
-                    liste.distance = (distance * RESOLUTION_ROUE_CODEUSE) / PERIMETRE_ROUE_CODEUSE;
-                    liste.vmax = VMAX;
-                    liste.amax = AMAX;
-                    liste.enchainement = 0;
-
-                    remplirStruct(DATArobot,ACKNOWLEDGE_MOTEUR, 2, 0x24, 0,0,0,0,0,0,0);
-                    writeStructInCAN(DATArobot);
-                    //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x24, 0);
-                
-            }
-            break;
-            case ASSERVISSEMENT_XYT_Qt :
-            {
-                    // `#START MESSAGE_X_Y_Theta_RECEIVED` 
-                    stop_receive = 0;
-                    Serial.print("  ASSERVISSEMENT_XYT_Qt : ");
-                    //On vide le buffer de mouvements
-                    liste = (struct Ordre_deplacement){TYPE_DEPLACEMENT_IMMOBILE,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-                    nb_ordres = 0;
-                    cpt_ordre = 0;//ne sert à rien mais au cas où, au futur...
-
-                    liste.x = (DATAtoControl.dt[0] << 8) | DATAtoControl.dt[1];
-                    liste.y = (DATAtoControl.dt[2] << 8) | DATAtoControl.dt[3];
-                    liste.theta = (DATAtoControl.dt[4] << 8) | DATAtoControl.dt[5];
-                    liste.sens =  DATAtoControl.dt[6];
-
-                    Serial.printf("\nX = %d, Y = %d, theta = %d sens = %d\n", liste.x, liste.y, liste.theta, liste.sens);
-
-                    liste.type = TYPE_DEPLACEMENT_X_Y_THETA;
-                    liste.vmax = VMAX;
-                    liste.amax = AMAX;        
-                    //Serial.println("ACKNOWLEDGE_MOTEUR");
-                    remplirStruct(DATArobot,ACKNOWLEDGE_MOTEUR, 2, 0x20, 0,0,0,0,0,0,0);
-                    writeStructInCAN(DATArobot);    
-                    //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x20, 0);
-            }
-            break;
-            case ASSERVISSEMENT_COURBURE_Qt:
-            {
-                /* `#START MESSAGE_Rayon_de_courbure_RECEIVED` */
-                stop_receive = 0;
-                Serial.print("  ASSERVISSEMENT_COURBURE_Qt : ");
-                int16_t rayon = (DATAtoControl.dt[0] << 8) | DATAtoControl.dt[1];
-                int16_t theta = (DATAtoControl.dt[2] << 8) | DATAtoControl.dt[3];
-                uint8_t sens = DATAtoControl.dt[4];
-                uint8_t enchainement = 0;
-                uint8_t speedRatio = 0;
-        
-                if (enchainement)
-                {
-                    liste.type = TYPE_DEPLACEMENT_RAYON_COURBURE_CLOTHOIDE;
-                    liste.rayon = rayon;
-                    liste.theta_ray = theta;
-                    liste.sens = sens;
-                    liste.vmax = VMAX;
-                    liste.amax = AMAX_CLO;
-                    liste.dmax = DMAX;
-                    liste.enchainement = enchainement;
-                    liste.vinit = VMAX;//(long)((long)(VMAX)*(long)(speedRatio))>>8;
-                    nb_ordres++;
-            
-                    if(enchainement == (2 || 1)) // ERREUR ?!?
-                    {
-                        //Serial.println("ACKNOWLEDGE_MOTEUR");
-                        remplirStruct(DATArobot,ACKNOWLEDGE_MOTEUR, 2, 0x21, 0,0,0,0,0,0,0);
-                        writeStructInCAN(DATArobot);
-                        //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x21, 0 /* enchainement<<3 */);                
-                    }
-                }
-                else
-                {
-                    liste = (struct Ordre_deplacement){TYPE_DEPLACEMENT_IMMOBILE,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-                    nb_ordres = 0;
-                    cpt_ordre = 0;
-                    liste.type = TYPE_DEPLACEMENT_RAYON_COURBURE;
-                    liste.rayon = rayon;
-                    liste.theta_ray = theta;
-                    liste.sens = sens;
-                    liste.vmax = VMAX;
-                    liste.amax = AMAX;
-                    liste.enchainement = enchainement;
-                    //Serial.println("ACKNOWLEDGE_MOTEUR");
-                    remplirStruct(DATArobot,ACKNOWLEDGE_MOTEUR, 2, 0x21, 0,0,0,0,0,0,0);
-                    writeStructInCAN(DATArobot);
-                    //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x21, 0);
-                }
-        
-            }
-            break;  
-            
-            
+            }break;
 //---------------------------------------------
-
-            case 0x00:
-            {
-                
-            }
-            break;  
             
             default :
-            
             break;
     }
     // Send message to master via bleutooth
@@ -2878,7 +2749,7 @@ void Odometrie(void)//fait
     
       
     //Calcul de la valeur de l'angle parcouru
-    ang = ((Odo_val_pos_D - Odo_last_val_pos_D) -(Odo_val_pos_G - Odo_last_val_pos_G))*1800.0*PERIMETRE_ROUE_CODEUSE/(LARGEUR_ROBOT*M_PI*RESOLUTION_ROUE_CODEUSE);
+    ang = (((Odo_val_pos_D - Odo_last_val_pos_D) -(Odo_val_pos_G - Odo_last_val_pos_G))*1800.0*PERIMETRE_ROUE_CODEUSE/(LARGEUR_ROBOT*M_PI*RESOLUTION_ROUE_CODEUSE));
     
     //Determination de la position sur le terrain en X, Y, Theta
     Odo_theta +=  ang;
@@ -2891,7 +2762,9 @@ void Odometrie(void)//fait
     Odo_last_val_pos_D = Odo_val_pos_D;
     Odo_last_val_pos_G = Odo_val_pos_G;
     
+    /**/
     
+    /**/
     mscount1 ++;    
     //Condition d'envoi des informations de l'odometrie par CAN 
     if(mscount1 >= (500/TE_100US))//toutes les 50ms
@@ -2899,8 +2772,8 @@ void Odometrie(void)//fait
         // digitalWrite(27, set);//pour mesurer le temps de mscount1 avec l'oscilloscope
         // set = !set;
         mscount1 = 0;
-        //Serial.println();
-        //Serial.printf("Odo_val_pos_D : %lf ; Odo_val_pos_G : %lf ; Odo_val_pos_D - Odo_val_pos_G : %lf\n", Odo_val_pos_D, Odo_val_pos_G, erreur);
+        // Serial.println();
+         Serial.printf("Odo_val_pos_D : %lf ; Odo_val_pos_G : %lf ; Odo_val_pos_D - Odo_val_pos_G : %lf\n", Odo_val_pos_D, Odo_val_pos_G, erreur);
 
         CANenvoiMsg3x2Bytes(ODOMETRIE_SMALL_POSITION, Odo_x, Odo_y, ((int16_t)Odo_theta) % 3600);
         //CANenvoiMsg3x2Bytes(ODOMETRIE_SMALL_POSITION, Odo_x, Odo_y, ((int16)Odo_theta) % 3600);
@@ -3052,6 +2925,7 @@ void remplirStruct2x4Bytes(uint32_t id, void *pdata1, void *pdata2){
     DATArobot.ln = 8;
     memcpy(&DATArobot.dt, pdata1, 4);
     memcpy(&(DATArobot.dt[4]), pdata2, 4);
+    
 }
 void CANenvoiMsg3x2Bytes(uint32_t id, int16_t data1, int16_t data2, int16_t data3){
     DATArobot.RTR = false;

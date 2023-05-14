@@ -129,9 +129,9 @@
  C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/spi_flash/include/esp_spi_flash.h \
  C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/spi_flash/include/esp_spi_flash_counters.h \
  C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/esp_hw_support/include/soc/esp32/spiram.h \
- src/AsserBas/src/espBLEcan.h src/AsserBas/src/CRAC_utility.h \
- src/AsserBas/src/ident_crac.h src/AsserBas/src/buffer_circulaire.h \
- src/CAN/src/CAN.h src/CAN/src/ESP32SJA1000.h src/CAN/src/CANController.h \
+ lib/AsserBas/src/espBLEcan.h lib/AsserBas/src/CRAC_utility.h \
+ lib/AsserBas/src/ident_crac.h lib/AsserBas/src/buffer_circulaire.h \
+ lib/CAN/src/CAN.h lib/CAN/src/ESP32SJA1000.h lib/CAN/src/CANController.h \
  C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/libraries/BLE/src/BLEDevice.h \
  C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/bt/host/bluedroid/api/include/api/esp_gap_ble_api.h \
  C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/bt/host/bluedroid/api/include/api/esp_bt_defs.h \
@@ -165,5 +165,5 @@
  C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/libraries/BLE/src/BLE2902.h \
  C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/libraries/Wire/src/Wire.h \
  C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal.h \
- src/AsserBas/src/CRAC_utility.h src/AsserBas/src/ident_crac.h \
- src/AsserBas/src/buffer_circulaire.h src/AsserBas/src/clotho.h
+ lib/AsserBas/src/CRAC_utility.h lib/AsserBas/src/ident_crac.h \
+ lib/AsserBas/src/buffer_circulaire.h lib/AsserBas/src/clotho.h

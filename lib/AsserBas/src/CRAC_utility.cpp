@@ -35,9 +35,9 @@ void Encodeur_Init()
     //  Enable the weak pull up resistors
     ESP32Encoder::useInternalWeakPullResistors = UP;
     // use pin 23 and 22 for the first encoder
-    EncoderDroite.attachFullQuad(39, 36);
+    EncoderDroite.attachFullQuad(36, 39);
     // use pin 39 and 36 for the second encoder
-    EncoderGauche.attachFullQuad(22, 23);
+    EncoderGauche.attachFullQuad(23, 22);
     // clear the encoder's raw count and set the tracked count to zero
     EncoderDroite.clearCount();
     EncoderGauche.clearCount();
@@ -270,16 +270,16 @@ void write_PWMD(double vitD)
 {
     if (vitD >= 0) // Mode Avancer
     {
-        Moteur_D_INA_Write(1);
-        Moteur_D_INB_Write(0);
+        Moteur_D_INA_Write(0);
+        Moteur_D_INB_Write(1);
         if (vitD > VIT_MAX)
             vitD = VIT_MAX; // Palier de vitesse fixé à 250
         PWM_D_WriteCompare(vitD);
     }
     else if (vitD < 0) // Mode Reculer
     {
-        Moteur_D_INA_Write(0);
-        Moteur_D_INB_Write(1);
+        Moteur_D_INA_Write(1);
+        Moteur_D_INB_Write(0);
         if (vitD < -VIT_MAX)
             vitD = -VIT_MAX; // Palier de vitesse fixé à 250
         PWM_D_WriteCompare(-vitD);
@@ -303,8 +303,8 @@ void write_PWMG(double vitG)
     if (vitG >= 0) // Mode Avancer
     {
 
-        Moteur_G_INA_Write(1);
-        Moteur_G_INB_Write(0);
+        Moteur_G_INA_Write(0);
+        Moteur_G_INB_Write(1);
         if (vitG > VIT_MAX)
             vitG = VIT_MAX; // Palier de vitesse fixé à 250
         PWM_G_WriteCompare(vitG);
@@ -312,8 +312,8 @@ void write_PWMG(double vitG)
     else if (vitG < 0) // Mode Reculer
     {
 
-        Moteur_G_INA_Write(0);
-        Moteur_G_INB_Write(1);
+        Moteur_G_INA_Write(1);
+        Moteur_G_INB_Write(0);
         if (vitG < -VIT_MAX)
             vitG = -VIT_MAX; // Palier de vitesse fixé à 250
         PWM_G_WriteCompare(-vitG);

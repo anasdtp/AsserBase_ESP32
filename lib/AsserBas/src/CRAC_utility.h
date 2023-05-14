@@ -197,8 +197,8 @@ extern buf_circ_t buffer_distanceG;
 extern buf_circ_t buffer_distanceD;
 extern char flagDebutBezier;
 
-const int PWM_MOTD = 18;    // PIN18
-const int PWM_MOTG = 17;    
+const int PWM_MOTD = 17;    // PIN18
+const int PWM_MOTG = 18;    
 const int PWMDChannel = 3;
 const int PWMGChannel = 2;
 
