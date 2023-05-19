@@ -43,7 +43,7 @@ char flagDebutBezier = 0;
 int nbValeurs = 0;
 int nbprint = 0;
 
-double Kp =8    , Ki =0.0, Kd =35.0;
+double Kp =8    , Ki =0.4, Kd =10.0;
                 
 /****************************************************************************************/
 //Sinon, détails : les angles sont exprimés en dixièmes de degrés quand il faut faire des calculs, ou quand ils faut les transmettre en CAN
@@ -130,7 +130,7 @@ void setup() {
   init_coef();
   setupCAN();
   //Init BLE device
-  masterBTConnect("BaseRoulanteGE1");
+  masterBTConnect("BaseRoulanteGE2");
   Serial.printf("fin ble init\n"); //Ne pas rajouter de Serial.printx dans le loop 
                                   //sinon cela augmente le temps de loop on risque d'avoir un TE faux
   Encodeur_Init();
@@ -147,7 +147,7 @@ void setup() {
   remplirStruct(DATArobot, ALIVE_MOTEUR,0,0,0,0,0,0,0,0,0);
   writeStructInCAN(DATArobot);
   Serial.printf("envoie CAN ALIVE_MOTEUR\n");
-  Serial.println("fin setup\n");
+  //Serial.println("fin setup\n");
   
   /*liste.type = TYPE_DEPLACEMENT_LIGNE_DROITE;//test
   liste.distance = 1000;*/
@@ -163,15 +163,15 @@ void loop() {
   
   if (mscount >= (TE_100US)) 
   {   
-    Serial.println("erreur temp calcul");
-    Serial.println(mscount);
+    //Serial.println("erreur temp calcul");
+    //Serial.println(mscount);
     remplirStruct(DATArobot,ERREUR_TEMP_CALCUL,2, mscount,TE_100US,0,0,0,0,0,0);
     writeStructInCAN(DATArobot);
     
     if (deviceConnected){
         pTxCharacteristic->setValue((uint8_t *)&DATArobot, sizeof(DATArobot));
 		pTxCharacteristic->notify();
-    //Serial.println("Sending via BT...");
+    ////Serial.println("Sending via BT...");
     }else{if(!nbprint){Serial.println("The device is not connected"); nbprint ++;}}
 
     
@@ -238,13 +238,13 @@ void calcul(void){//fait!!
         {
             etat_prec = liste.type;
             
-            Serial.println("ID_DBUG_ETAT");
+            //Serial.println("ID_DBUG_ETAT");
             remplirStruct(DATArobot,ID_DBUG_ETAT, 1, etat_prec, 0,0,0,0,0,0,0);
             writeStructInCAN(DATArobot);                             //CAN
             if (deviceConnected){
                 pTxCharacteristic->setValue((uint8_t *)&DATArobot, sizeof(DATArobot));
 		        pTxCharacteristic->notify();
-    //Serial.println("Sending via BT...");
+    ////Serial.println("Sending via BT...");
         }else{if(!nbprint){Serial.println("The device is not connected"); nbprint ++;}}
             
             #if F_DBUG_ETAT_DPL
@@ -253,7 +253,7 @@ void calcul(void){//fait!!
             if (deviceConnected){
                 pTxCharacteristic->setValue((uint8_t *)&DATArobot, sizeof(DATArobot));
 		        pTxCharacteristic->notify();
-    //Serial.println("Sending via BT...");
+    ////Serial.println("Sending via BT...");
         }else{if(!nbprint){Serial.println("The device is not connected"); nbprint ++;}}
             #endif
         }
@@ -263,7 +263,7 @@ void calcul(void){//fait!!
         if(etat_automate_depl_prec != etat_automate_depl && etat_automate_depl != 8)
         {
             etat_automate_depl_prec = etat_automate_depl;
-            //Serial.println("ID_DBUG_ETAT_DPL");
+            ////Serial.println("ID_DBUG_ETAT_DPL");
             remplirStruct(DATArobot,ID_DBUG_ETAT_DPL, 1, etat_automate_depl_prec, 0,0,0,0,0,0,0);
             writeStructInCAN(DATArobot);                             //CAN           
         }
@@ -271,7 +271,7 @@ void calcul(void){//fait!!
        
         if (Fin_Match){
             liste.type = (TYPE_END_GAME);
-            //Serial.println("INSTRUCTION_END_MOTEUR");
+            ////Serial.println("INSTRUCTION_END_MOTEUR");
             //On prévient qu'on s'est arrêté
             // le dlc original était de 2 avec un 0 en second octet
             remplirStruct(DATArobot,INSTRUCTION_END_MOTEUR, 1, 0x04, 0,0,0,0,0,0,0);
@@ -370,7 +370,7 @@ void calcul(void){//fait!!
                 while(liste.enchainement !=2);
                 
                 #if (F_DBUG_TRAIT_ETAT)
-                //Serial.println("ID_TRAIT");
+                ////Serial.println("ID_TRAIT");
                 remplirStruct(DATArobot,ID_TRAIT, 1, 0x01, 0,0,0,0,0,0,0);
                 writeStructInCAN(DATArobot);                             //CAN
                 //CANenvoiMsg1Byte(ID_TRAIT, 1);
@@ -380,7 +380,7 @@ void calcul(void){//fait!!
                 for(compteurMvnt = 0; compteurMvnt<nb_ordres; compteurMvnt++)
                 {
                     #if (F_DBUG_TRAIT_ETAT)
-                    //Serial.println("ID_TRAIT");
+                    ////Serial.println("ID_TRAIT");
                     remplirStruct(DATArobot,ID_TRAIT, 2, 0x03, compteurMvnt,0,0,0,0,0,0);
                     writeStructInCAN(DATArobot);                             //CAN
                     ////CANenvoiMsg2x1Byte(ID_TRAIT, 3, compteurMvnt);
@@ -407,7 +407,7 @@ void calcul(void){//fait!!
                 etat_automate_depl = (INITIALISATION);
                 
                 #if (F_DBUG_TRAIT_ETAT)
-                //Serial.println("ID_TRAIT");
+                ////Serial.println("ID_TRAIT");
                 remplirStruct(DATArobot,ID_TRAIT, 1, 0x02, 0,0,0,0,0,0,0);
                 writeStructInCAN(DATArobot);                             //CAN
                 //CANenvoiMsg1Byte(ID_TRAIT, 2);
@@ -498,7 +498,7 @@ void calcul(void){//fait!!
             if(buf_circ_free_space(&buffer_distanceG) > 0)
             {
                 //L'envoi d'un ack provoque l'envoi d'une nouvelle valeur
-                //Serial.println("ACKNOWLEDGE_BEZIER");
+                ////Serial.println("ACKNOWLEDGE_BEZIER");
                 remplirStruct(DATArobot,ACKNOWLEDGE_BEZIER,0,0,0,0,0,0,0,0,0);
                 writeStructInCAN(DATArobot);
                 //CANenvoiMsg(ACKNOWLEDGE_BEZIER);
@@ -545,7 +545,7 @@ void calcul(void){//fait!!
             }*/
             
             case TYPE_INIT_STOP :{
-            //Arret_Brutal();
+            // Arret_Brutal();
             //cpt_stop = 0;
             //etat_automate_depl = DECELERATION_TRAPEZE;
             //cpt=global_ta_stop;
@@ -556,13 +556,13 @@ void calcul(void){//fait!!
             break;
             }
             case TYPE_STOP :{
-/*            cpt_stop ++;
+        /*    cpt_stop ++;
             if ((cpt_stop > 25)))
             {
                 if(stop_receive==0)
                     liste.type = TYPE_MOUVEMENT_SUIVANT;
             }
-*/            break;
+       */     break;
             }
             default :{
               cmdD = Asser_Pos_MotD(roue_drt_init);
@@ -655,18 +655,18 @@ void CANloop(){
   if(canAvailable || BtAvailable){
     if(canAvailable){canReadExtRtr();}//On le me ici pour ne pas surcharger l'interruption CAN.onRecveive
     canAvailable = false; BtAvailable = false;
-    //Serial.println("CAN received");
+    ////Serial.println("CAN received");
     
     switch (DATAtoControl.ID)
     {
 
             case ESP32_RESTART:
-                Serial.println("ESP32_RESTART");
+                //Serial.println("ESP32_RESTART");
                 //esp_restart();
                 
                 break;
             case ASSERVISSEMENT_REQUETE_PID:
-                Serial.println("ASSERVISSEMENT_REQUETE_PID");
+                //Serial.println("ASSERVISSEMENT_REQUETE_PID");
                 CANenvoiMsg1x8Bytes(ASSERVISSEMENT_CONFIG_KPP, &KppD);
                 CANenvoiMsg1x8Bytes(ASSERVISSEMENT_CONFIG_KPI, &KipD);
                 CANenvoiMsg1x8Bytes(ASSERVISSEMENT_CONFIG_KPD, &KdpD);
@@ -674,33 +674,33 @@ void CANloop(){
             case ASSERVISSEMENT_CONFIG_KPP_DROITE:
                 memcpy(&KppD, DATAtoControl.dt, 8);
                 KppDa = KppD;
-                //Serial.println("ASSERVISSEMENT_CONFIG_KPP_DROITE");
+                ////Serial.println("ASSERVISSEMENT_CONFIG_KPP_DROITE");
                 break;
             case ASSERVISSEMENT_CONFIG_KPI_DROITE:
                 memcpy(&KipD, DATAtoControl.dt, 8);
                 KipDa = KipD;
-                //Serial.println("ASSERVISSEMENT_CONFIG_KPI_DROITE");
+                ////Serial.println("ASSERVISSEMENT_CONFIG_KPI_DROITE");
                 break;
             case ASSERVISSEMENT_CONFIG_KPD_DROITE:
                 memcpy(&KdpD, DATAtoControl.dt, 8);
                 KdpDa = KdpD;
-                //Serial.println("ASSERVISSEMENT_CONFIG_KPD_DROITE");
+                ////Serial.println("ASSERVISSEMENT_CONFIG_KPD_DROITE");
                 break;
                 
             case ASSERVISSEMENT_CONFIG_KPP_GAUCHE:
                 memcpy(&KppG, DATAtoControl.dt, 8);
                 KppGa = KppG;
-                //Serial.println("ASSERVISSEMENT_CONFIG_KPP_GAUCHE");
+                ////Serial.println("ASSERVISSEMENT_CONFIG_KPP_GAUCHE");
                 break;
             case ASSERVISSEMENT_CONFIG_KPI_GAUCHE :
                 memcpy(&KipG, DATAtoControl.dt, 8);
                 KipGa = KipG;
-                //Serial.println("ASSERVISSEMENT_CONFIG_KPI_GAUCHE");
+                ////Serial.println("ASSERVISSEMENT_CONFIG_KPI_GAUCHE");
                 break;
             case ASSERVISSEMENT_CONFIG_KPD_GAUCHE :
                 memcpy(&KdpG, DATAtoControl.dt, 8);
                 KdpGa = KdpG;
-                //Serial.println("ASSERVISSEMENT_CONFIG_KPD_GAUCHE");
+                ////Serial.println("ASSERVISSEMENT_CONFIG_KPD_GAUCHE");
                 break;
                 
             case ASSERVISSEMENT_CONFIG_KPP:{
@@ -710,7 +710,7 @@ void CANloop(){
                 AsserInitCoefs(Kp, Ki, Kd);
                 Serial.print("  ASSERVISSEMENT_CONFIG_KPP : ");
                 Serial.printf("%f ", Kp);
-                Serial.println();
+                //Serial.println();
                 }
                 break;
             case ASSERVISSEMENT_CONFIG_KPI :
@@ -719,7 +719,7 @@ void CANloop(){
                 AsserInitCoefs(Kp, Ki, Kd);
                 Serial.print("  ASSERVISSEMENT_CONFIG_KPI : ");
                 Serial.printf("%f ", Ki);
-                Serial.println();
+                //Serial.println();
                 break;
             case ASSERVISSEMENT_CONFIG_KPD :
                 Kd = 0;
@@ -727,7 +727,7 @@ void CANloop(){
                 AsserInitCoefs(Kp, Ki, Kd); 
                 Serial.print("  ASSERVISSEMENT_CONFIG_KPD : ");
                 Serial.printf("%f ", Kd);
-                Serial.println();
+                //Serial.println();
                 break;
 
             case ASSERVISSEMENT_CONFIG_PERIMETRE_ROUE_CODEUSE :
@@ -735,17 +735,17 @@ void CANloop(){
                 AsserInitCoefs(Kp, Ki, Kd); 
                 Serial.print("  ASSERVISSEMENT_CONFIG_PERIMETRE_ROUE_CODEUSE : ");
                 Serial.printf("%f ", PERIMETRE_ROUE_CODEUSE);
-                Serial.println();
+                //Serial.println();
                 break;
             case ASSERVISSEMENT_CONFIG_LARGEUR_ROBOT :
                 memcpy(&LARGEUR_ROBOT, DATAtoControl.dt, 8);
                 AsserInitCoefs(Kp, Ki, Kd); 
                 Serial.print("  ASSERVISSEMENT_CONFIG_LARGEUR_ROBOT : ");
                 Serial.printf("%f ", LARGEUR_ROBOT);
-                Serial.println();
+                //Serial.println();
                 break;
             case ECRAN_CHOICE_COLOR :
-                Serial.println("ECRAN_CHOICE_COLOR");
+                //Serial.println("ECRAN_CHOICE_COLOR");
                 break;
                 
             case ASSERVISSEMENT_ENABLE :
@@ -755,7 +755,7 @@ void CANloop(){
                     roue_drt_init = lireCodeurD();
                     roue_gch_init = lireCodeurG();
                 }
-                Serial.println("ASSERVISSEMENT_ENABLE");
+                //Serial.println("ASSERVISSEMENT_ENABLE");
             break;
                 
             case ASSERVISSEMENT_DECEL :
@@ -764,12 +764,12 @@ void CANloop(){
                     VMAX = ((double)DATAtoControl.dt[0]+256*DATAtoControl.dt[1])*k;
                     DMAX = ((double)DATAtoControl.dt[2]+256*DATAtoControl.dt[3])*k*k;
                     ralentare = 1;
-                    //Serial.println("ACKNOWLEDGE_MOTEUR");
+                    ////Serial.println("ACKNOWLEDGE_MOTEUR");
                     remplirStruct(DATArobot,ACKNOWLEDGE_MOTEUR, 2, ASSERVISSEMENT_DECEL, 0,0,0,0,0,0,0);
                     writeStructInCAN(DATArobot);
                     //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x19, 0);
                 }
-                //Serial.println("ASSERVISSEMENT_DECEL");
+                ////Serial.println("ASSERVISSEMENT_DECEL");
             break;
             case ASSERVISSEMENT_XYT :
             {
@@ -783,15 +783,18 @@ void CANloop(){
 
                     liste.x = (DATAtoControl.dt[1] << 8) | DATAtoControl.dt[0];
                     liste.y = (DATAtoControl.dt[3] << 8) | DATAtoControl.dt[2];
+                    // liste.y *= -1;
                     liste.theta = (DATAtoControl.dt[5] << 8) | DATAtoControl.dt[4];
                     liste.sens =  DATAtoControl.dt[6];
                     liste.type = TYPE_DEPLACEMENT_X_Y_THETA;
                     liste.vmax = VMAX;
                     liste.amax = AMAX;        
-                    //Serial.println("ACKNOWLEDGE_MOTEUR");
+                    ////Serial.println("ACKNOWLEDGE_MOTEUR");
                     remplirStruct(DATArobot,ACKNOWLEDGE_MOTEUR, 2, ASSERVISSEMENT_XYT, 0,0,0,0,0,0,0);
                     writeStructInCAN(DATArobot);    
                     //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x20, 0);
+
+                    
             }
             break;
             case ASSERVISSEMENT_COURBURE:
@@ -820,7 +823,7 @@ void CANloop(){
             
                     if(enchainement == (2 || 1)) // ERREUR ?!?
                     {
-                        //Serial.println("ACKNOWLEDGE_MOTEUR");
+                        ////Serial.println("ACKNOWLEDGE_MOTEUR");
                         remplirStruct(DATArobot,ACKNOWLEDGE_MOTEUR, 2, 0x21, 0,0,0,0,0,0,0);
                         writeStructInCAN(DATArobot);
                         //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x21, 0 /* enchainement<<3 */);                
@@ -838,7 +841,7 @@ void CANloop(){
                     liste.vmax = VMAX;
                     liste.amax = AMAX;
                     liste.enchainement = enchainement;
-                    //Serial.println("ACKNOWLEDGE_MOTEUR");
+                    ////Serial.println("ACKNOWLEDGE_MOTEUR");
                     remplirStruct(DATArobot,ACKNOWLEDGE_MOTEUR, 2, 0x21, 0,0,0,0,0,0,0);
                     writeStructInCAN(DATArobot);
                     //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x21, 0);
@@ -876,7 +879,7 @@ void CANloop(){
                 liste.angle = LARGEUR_ROBOT * M_PI * RESOLUTION_ROUE_CODEUSE * angle / (3600 * PERIMETRE_ROUE_CODEUSE);
                 liste.vmax = VMAX;
                 liste.amax = AMAX;
-                //Serial.println("ACKNOWLEDGE_MOTEUR");
+                ////Serial.println("ACKNOWLEDGE_MOTEUR");
                 remplirStruct(DATArobot,ACKNOWLEDGE_MOTEUR, 2, ASSERVISSEMENT_ROTATION, 0,0,0,0,0,0,0);
                 writeStructInCAN(DATArobot);
                 //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x23, 0);
@@ -893,6 +896,8 @@ void CANloop(){
                 uint8_t enchainement = DATAtoControl.dt[5];
                 int8_t vinit = DATAtoControl.dt[6];
                 int8_t vfin = DATAtoControl.dt[7];
+
+                 
         
                 //Recalage
                 if (mode)
@@ -988,7 +993,7 @@ void CANloop(){
                 if(buf_circ_free_space(&buffer_distanceG) > 0)
                 {
                     //L'envoi d'un ack provoque l'envoi d'une nouvelle valeur
-                    //Serial.println("ACKNOWLEDGE_BEZIER");
+                    ////Serial.println("ACKNOWLEDGE_BEZIER");
                     remplirStruct(DATArobot,ACKNOWLEDGE_BEZIER,0,0,0,0,0,0,0,0,0);
                     writeStructInCAN(DATArobot);
 
@@ -1004,6 +1009,9 @@ void CANloop(){
                 Odo_x = (DATAtoControl.dt[1] << 8) | DATAtoControl.dt[0];
                 Odo_y = (DATAtoControl.dt[3] << 8) | DATAtoControl.dt[2];
                 Odo_theta = (DATAtoControl.dt[5] << 8) | DATAtoControl.dt[4];
+
+                remplirStruct(DATArobot,ACKNOWLEDGE_MOTEUR,ODOMETRIE_SMALL_POSITION,0,0,0,0,0,0,0,0);
+                writeStructInCAN(DATArobot);
             }
             break;
             case ODOMETRIE_SMALL_VITESSE:
@@ -1016,6 +1024,8 @@ void CANloop(){
                 Odo_x = (DATAtoControl.dt[1] << 8) | DATAtoControl.dt[0];
                 Odo_y = (DATAtoControl.dt[3] << 8) | DATAtoControl.dt[2];
                 Odo_theta = (DATAtoControl.dt[5] << 8) | DATAtoControl.dt[4];
+                remplirStruct(DATArobot,ACKNOWLEDGE_MOTEUR,ODOMETRIE_BIG_POSITION,0,0,0,0,0,0,0,0);
+                writeStructInCAN(DATArobot);
             }
             break;
             case ODOMETRIE_BIG_VITESSE:
@@ -1033,8 +1043,8 @@ void CANloop(){
             {
                 /* `#START MESSAGE_Stop_RECEIVED` */
                 stop_receive = 1;
-                //Serial.println("ACKNOWLEDGE_MOTEUR");
-                remplirStruct(DATArobot,ACKNOWLEDGE_MOTEUR, 2, 0x01, 0,0,0,0,0,0,0);
+                ////Serial.println("ACKNOWLEDGE_MOTEUR");
+                remplirStruct(DATArobot,ACKNOWLEDGE_MOTEUR, 2, ASSERVISSEMENT_STOP, 0,0,0,0,0,0,0);
                 writeStructInCAN(DATArobot);
                 //CANenvoiMsg2x1Byte(ACKNOWLEDGE_MOTEUR, 0x01, 0);
             }
@@ -1043,7 +1053,7 @@ void CANloop(){
             {
                 /* `#START MESSAGE_Check_RECEIVED` */
                 attente = 1;
-                //Serial.println("ALIVE_MOTEUR");
+                ////Serial.println("ALIVE_MOTEUR");
                 remplirStruct(DATArobot,ALIVE_MOTEUR, 0, 0, 0,0,0,0,0,0,0);
                 writeStructInCAN(DATArobot);
                 //CANenvoiMsg(ALIVE_MOTEUR);
@@ -1058,7 +1068,7 @@ void CANloop(){
                 AsserInitCoefs(Kp, Ki, Kd);
                 Serial.print("  ASSERVISSEMENT_CONFIG_KPP Qt: ");
                 Serial.printf("%f ", Kp);
-                Serial.println();
+                //Serial.println();
                 }
                 break;
             case ASSERVISSEMENT_CONFIG_KPI_Qt :
@@ -1068,7 +1078,7 @@ void CANloop(){
                 AsserInitCoefs(Kp, Ki, Kd);
                 Serial.print("  ASSERVISSEMENT_CONFIG_KPI Qt: ");
                 Serial.printf("%f ", Ki);
-                Serial.println();
+                //Serial.println();
                 break;
             case ASSERVISSEMENT_CONFIG_KPD_Qt :
                 Kd= ((DATAtoControl.dt[0] << 24) | (DATAtoControl.dt[1] << 16) | 
@@ -1077,7 +1087,7 @@ void CANloop(){
                 AsserInitCoefs(Kp, Ki, Kd); 
                 Serial.print("  ASSERVISSEMENT_CONFIG_KPD Qt: ");
                 Serial.printf("%f ", Kd);
-                Serial.println();
+                //Serial.println();
                 break;
             case ASSERVISSEMENT_CONFIG_LARGEUR_ROBOT_Qt :
                 LARGEUR_ROBOT = ((DATAtoControl.dt[0] << 24) | (DATAtoControl.dt[1] << 16) | 
@@ -1086,7 +1096,7 @@ void CANloop(){
                 AsserInitCoefs(Kp, Ki, Kd); 
                 Serial.print("  ASSERVISSEMENT_CONFIG_LARGEUR_ROBOT_Qt: ");
                 Serial.printf("%f ", LARGEUR_ROBOT);
-                Serial.println();
+                //Serial.println();
                 break;
             case ASSERVISSEMENT_CONFIG_PERIMETRE_ROUE_CODEUSE_Qt :
                 PERIMETRE_ROUE_CODEUSE= ((DATAtoControl.dt[0] << 24) | (DATAtoControl.dt[1] << 16) | 
@@ -1095,7 +1105,7 @@ void CANloop(){
                 AsserInitCoefs(Kp, Ki, Kd); 
                 Serial.print("  ASSERVISSEMENT_CONFIG_PERIMETRE_ROUE_CODEUSE_Qt : ");
                 Serial.printf("%f ", PERIMETRE_ROUE_CODEUSE);
-                Serial.println();
+                //Serial.println();
                 break;
             case IDCAN_POS_XY_OBJET:{
 
@@ -1108,14 +1118,14 @@ void CANloop(){
     // Send message to master via bleutooth
     /*if (connected){
       prxRemoteCharacteristic->writeValue((uint8_t *)&DATAtoControl, sizeof(DATAtoControl));
-      Serial.println("Sending via BT...");
-    } else{Serial.println("The device is not connected");}*/
+      //Serial.println("Sending via BT...");
+    } else{//Serial.println("The device is not connected");}*/
   }
   //if new CAN by BT are available, write it in CAN bus / CAN <-> Bt <-> CAN and use it to control the Robot
   if (newCan){
     newCan = false;
     writeStructInCAN(DATAtoControl); 
-    Serial.println(DATAtoControl.ID);
+    ////Serial.println(DATAtoControl.ID);
     BtAvailable = true;
   }
   
@@ -1211,7 +1221,7 @@ void Mouvement_Elementaire(long pcons, short vmax, short amax, short dmax, char 
             etat_automate_depl = ACCELERATION_TRIANGLE;
             posCalc = ta*vmax_tri/2 + td*vmax_tri/2;
         }
-        //Serial.println("ID_DIST_TIC_GENE");
+        ////Serial.println("ID_DIST_TIC_GENE");
         remplirStruct(DATArobot,ID_DIST_TIC_GENE, 2, (pcons&0xFF), ((pcons&0xFF00)<<8),0,0,0,0,0,0);
         writeStructInCAN(DATArobot);
         
@@ -1715,7 +1725,7 @@ void trait_Mouvement_Elementaire_Gene(struct Ordre_deplacement* monDpl)//fait
         else if(vfinAbs == 0)
         {
             //WARNING!!!!!!!!!!!!!
-            Serial.println("vfinAbs =0! Warning!");
+            ////Serial.println("vfinAbs =0! Warning!");
         }
         else if(vfinAbs > vinitAbs)
         {
@@ -1798,7 +1808,7 @@ void trait_Rayon_De_Courbure_Clotho(struct Ordre_deplacement* monDpl)
     int pcons, rapport;
     
     #if F_DBUG_TRAIT_ETAT_CLOTHO
-    //Serial.println("ID_TRAIT_CLOTHO");
+    ////Serial.println("ID_TRAIT_CLOTHO");
     remplirStruct(DATArobot,ID_TRAIT_CLOTHO, 1, 0x01, 0,0,0,0,0,0,0);
     writeStructInCAN(DATArobot);                             //CAN
     //CANenvoiMsg1Byte(ID_TRAIT_CLOTHO, 1);
@@ -2246,7 +2256,7 @@ void Rayon_De_Courbure_Clotho(struct Ordre_deplacement monDpl)//fait
                 cpt = 0;
                 finRayonCourbureClo = 1;
                 etat_automate_depl = INITIALISATION; 
-                //Serial.println("0x002");
+                ////Serial.println("0x002");
                 remplirStruct(DATArobot,0x002,0,0,0,0,0,0,0,0,0);
                 writeStructInCAN(DATArobot);
                 //CANenvoiMsg(0x002);
@@ -2312,7 +2322,7 @@ void X_Y_Theta(long px, long py, long ptheta, long sens, short vmax, short amax)
 {
     //Variables présentes Odo_x, Odo_y : position de départ
     //Declaration des variables
-    static short dist = 0, ang1 = 0, ang2 = 0;
+    static double dist = 0, ang1 = 0, ang2 = 0;
     short val[4], dmax;
     
     dmax = amax;
@@ -2325,6 +2335,8 @@ void X_Y_Theta(long px, long py, long ptheta, long sens, short vmax, short amax)
                 {
                     // Son hypothénuse correspond à la distance à parcourir
                     dist = (short)sqrt((px - Odo_x)*(px - Odo_x)+(py - Odo_y)*(py - Odo_y));
+
+                    
                     
                     // la 1ere rotation correspond à l'angle du triangle, moins l'angle de la position de départ
                     // C'est-à-dire la tangente du côté opposé sur l'angle adjacentç
@@ -2346,11 +2358,14 @@ void X_Y_Theta(long px, long py, long ptheta, long sens, short vmax, short amax)
                     
                     // On passe le résultat entre -1800 et 1800
                     if(ang2 > 1800) ang2 = (ang2 - 3600);
-                    
+                    Serial.printf("X_Y_Theta : Dist : %f, ang1 : %hd, ang2 : %hd       ;       ", dist, ang1, ang2); 
                     // On transforme les résultats en distance et angles utilisables avec les fonctions déjà définies
-                    dist = dist * RESOLUTION_ROUE_CODEUSE / PERIMETRE_ROUE_CODEUSE;
+                    dist = dist * (RESOLUTION_ROUE_CODEUSE / PERIMETRE_ROUE_CODEUSE);
                     ang1 = LARGEUR_ROBOT * M_PI * RESOLUTION_ROUE_CODEUSE * ang1 / (3600 * PERIMETRE_ROUE_CODEUSE);
                     ang2 = LARGEUR_ROBOT * M_PI * RESOLUTION_ROUE_CODEUSE * ang2 / (3600 * PERIMETRE_ROUE_CODEUSE);
+
+                    Serial.printf("X_Y_Theta : Dist : %f, ang1 : %hd, ang2 : %hd\n", dist, ang1, ang2); 
+                    
                 }
             
             //Mode Reculer
@@ -2400,7 +2415,7 @@ void X_Y_Theta(long px, long py, long ptheta, long sens, short vmax, short amax)
                 roue_drt_init = lireCodeurD();
                 roue_gch_init = lireCodeurG();
                 finMvtElem = 0;
-                //Serial.println("INSTRUCTION_END_MOTEUR");
+                ////Serial.println("INSTRUCTION_END_MOTEUR");
                 remplirStruct(DATArobot,INSTRUCTION_END_MOTEUR, 2, 0x30, 0x00,0,0,0,0,0,0);
                 writeStructInCAN(DATArobot);
                 //CANenvoiMsg2x1Byte(INSTRUCTION_END_MOTEUR, 0x30, 0);
@@ -2419,7 +2434,7 @@ void X_Y_Theta(long px, long py, long ptheta, long sens, short vmax, short amax)
                 roue_drt_init = lireCodeurD();
                 roue_gch_init = lireCodeurG();
                 finMvtElem = 0;
-                //Serial.println("INSTRUCTION_END_MOTEUR");
+                ////Serial.println("INSTRUCTION_END_MOTEUR");
                 remplirStruct(DATArobot,INSTRUCTION_END_MOTEUR, 2, 0x40, 0x00,0,0,0,0,0,0);
                 writeStructInCAN(DATArobot);
                 ////CANenvoiMsg2x1Byte(INSTRUCTION_END_MOTEUR, 0x40, 0);
@@ -2755,7 +2770,7 @@ void Odometrie(void)//fait
     Odo_theta +=  ang;
     Odo_x += dist*cos((double)(Odo_theta*M_PI/1800.0))*PERIMETRE_ROUE_CODEUSE/RESOLUTION_ROUE_CODEUSE;
     Odo_y += dist*sin((double)(Odo_theta*M_PI/1800.0))*PERIMETRE_ROUE_CODEUSE/RESOLUTION_ROUE_CODEUSE;
-    //Serial.println(Odo_x); 
+    ////Serial.println(Odo_x); 
 
     
     //Stockage de la derniere valeur de l'odometrie
@@ -2772,8 +2787,8 @@ void Odometrie(void)//fait
         // digitalWrite(27, set);//pour mesurer le temps de mscount1 avec l'oscilloscope
         // set = !set;
         mscount1 = 0;
-        // Serial.println();
-         Serial.printf("Odo_val_pos_D : %lf ; Odo_val_pos_G : %lf ; Odo_val_pos_D - Odo_val_pos_G : %lf\n", Odo_val_pos_D, Odo_val_pos_G, erreur);
+        // //Serial.println();
+         //Serial.printf("Odo_val_pos_D : %lf ; Odo_val_pos_G : %lf ; Odo_val_pos_D - Odo_val_pos_G : %lf\n", Odo_val_pos_D, Odo_val_pos_G, erreur);
 
         CANenvoiMsg3x2Bytes(ODOMETRIE_SMALL_POSITION, Odo_x, Odo_y, ((int16_t)Odo_theta) % 3600);
         //CANenvoiMsg3x2Bytes(ODOMETRIE_SMALL_POSITION, Odo_x, Odo_y, ((int16)Odo_theta) % 3600);
@@ -2806,10 +2821,10 @@ void Moteur_Init(){
 
 void setupCAN(){
   while (!Serial);
-  Serial.println("Base Roulante de Anas Le bg/dg");
+  //Serial.println("Base Roulante de Anas Le bg/dg");
   // start the CAN bus at 1000 kbps
   if (!CAN.begin(1000E3)) { //ici, nous avons modifié la bibliotheque CAN pour qu'elle soit compatible avec l'ESP32-E
-    Serial.println("Starting CAN failed!");
+    //Serial.println("Starting CAN failed!");
     while (1);
   }
   CAN.onReceive(canReadData); //init CAN callback function
@@ -2827,8 +2842,8 @@ void writeStructInCAN(const CANMessage &theDATA){
   CAN.endPacket();
   /*Serial.print(" ID : 0x");
   Serial.print(theDATA.ID, HEX);
-  Serial.println(" done");
-  Serial.println();*/
+  //Serial.println(" done");
+  //Serial.println();*/
 }
 void canReadData(int packetSize){
   remplirStruct(DATAtoControl, 0,0,0,0,0,0,0,0,0,0);
@@ -2855,7 +2870,7 @@ void canReadExtRtr(){
       DATAtoControl.RTR = true;
   }
   else{DATAtoControl.RTR = false;}
-  printCANMsg(DATAtoControl);
+  //printCANMsg(DATAtoControl);
 }
 void readDATA(std::string contenuBT, CANMessage &theDATA){
 
@@ -2943,11 +2958,11 @@ void CANenvoiMsg3x2Bytes(uint32_t id, int16_t data1, int16_t data2, int16_t data
 }
 void masterBTConnect(std::string name){
   // Create the BLE Device
-	Serial.println("Create the BLE Device..");
+	//Serial.println("Create the BLE Device..");
 	BLEDevice::init("BaseRoulante");
 
 	// Create the BLE Server
-	Serial.println("Create the BLE Server..");
+	//Serial.println("Create the BLE Server..");
 	pServer = BLEDevice::createServer();
 	pServer->setCallbacks(new MyServerCallbacks());
 
@@ -2978,13 +2993,13 @@ void masterBTConnect(std::string name){
   pAdvertising->setMinPreferred(0x0);  // set value to 0x00 to not advertise this parameter
   BLEDevice::startAdvertising();
 
-	Serial.println("Waiting a client connection to notify...");
+	//Serial.println("Waiting a client connection to notify...");
 }
 void BtActualise(){
     // disconnecting
 	if(!deviceConnected && oldDeviceConnected) {
 		pServer->startAdvertising();   // restart advertising
-		Serial.println("start advertising");
+		//Serial.println("start advertising");
 		oldDeviceConnected = deviceConnected;
 	}
 	// connecting
@@ -3087,7 +3102,7 @@ void init_Timer(){
    // Regle le declenchement d une alarme chaque seconde
    timerAlarmWrite(timer, 1, true);      //freq de 250 000 Hz    
    timerAlarmEnable(timer); //active l'alarme
-   Serial.println("Fin init Timer");
+   //Serial.println("Fin init Timer");
 }
 void init_coef(){
     double k = TE/0.02;

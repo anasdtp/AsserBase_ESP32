@@ -19,7 +19,7 @@ double last_ErreurPosD = 0, Somme_ErreurPosD = 0, ErreurPosD = 0;
 double last_ErreurPosG = 0, Somme_ErreurPosG = 0, ErreurPosG = 0;
 double last_Delta_ErreurPos = 0, somme_Delta_ErreurPos = 0, Delta_ErreurPos = 0;
 
-double PERIMETRE_ROUE_CODEUSE = 161.45, LARGEUR_ROBOT = 215.45; //robot test : perimetre : 124.58, largeur : 217 // 155.63 // 162.9
+double PERIMETRE_ROUE_CODEUSE = 161.45, LARGEUR_ROBOT = 215.45; //robot test : perimetre : 124.58, largeur : 217 // 155.63 // 162.9 // 213.5
 
 double DTIC = PERIMETRE_ROUE_CODEUSE / RESOLUTION_ROUE_CODEUSE;                                // longeur d'un tic de roue codeuse, en mm
 double LARGEUR_ROBOT_TIC = LARGEUR_ROBOT / (PERIMETRE_ROUE_CODEUSE / RESOLUTION_ROUE_CODEUSE); // largeur du robot en tic   //c'est pour harmoniser les unités
@@ -35,9 +35,9 @@ void Encodeur_Init()
     //  Enable the weak pull up resistors
     ESP32Encoder::useInternalWeakPullResistors = UP;
     // use pin 23 and 22 for the first encoder
-    EncoderDroite.attachFullQuad(36, 39);
+    EncoderGauche.attachFullQuad(36, 39);
     // use pin 39 and 36 for the second encoder
-    EncoderGauche.attachFullQuad(23, 22);
+    EncoderDroite.attachFullQuad(23, 22);
     // clear the encoder's raw count and set the tracked count to zero
     EncoderDroite.clearCount();
     EncoderGauche.clearCount();
@@ -353,19 +353,19 @@ int signesDif(double v1, double v2)
 {
     return (v1 >= 0) != (v2 >= 0);
 }
-void Moteur_G_INA_Write(bool set)
+void Moteur_D_INA_Write(bool set)
 {
     digitalWrite(26, set);
 }
-void Moteur_G_INB_Write(bool set)
+void Moteur_D_INB_Write(bool set)
 {
     digitalWrite(25, set);
 }
-void Moteur_D_INA_Write(bool set)
+void Moteur_G_INA_Write(bool set)
 {
     digitalWrite(16, set);
 }
-void Moteur_D_INB_Write(bool set)
+void Moteur_G_INB_Write(bool set)
 {
     digitalWrite(15, set);
 }
