@@ -92,7 +92,6 @@ void setupCAN();
 void writeStructInCAN(const CANMessage &theDATA);
 void canReadData(int packetSize);
 void canReadExtRtr();
-void CANloop();
 void masterBTConnect(std::string name);
 bool connectToServer(BLEAddress pAddress);
 void readDATA(std::string contenuBT, CANMessage &theDATA);
@@ -120,7 +119,8 @@ class MyServerCallbacks : public BLEServerCallbacks {
 class MyCallbacks : public BLECharacteristicCallbacks {
 	void onWrite(BLECharacteristic *pCharacteristic) {
 		std::string rxValue = pCharacteristic->getValue();
-    readDATA(rxValue, DATAtoControl);
+    readDATA(rxValue, rxMsg[FIFO_ecriture]);
+    FIFO_ecriture=(FIFO_ecriture+1)%SIZE_FIFO;
     newCan = true;
 	}
 };
@@ -129,9 +129,10 @@ void setup() {
   Serial.begin(921600);
   init_coef();
   setupCAN();
+  
   //Init BLE device
-  masterBTConnect("BaseRoulanteGE2");
-  Serial.printf("fin ble init\n"); //Ne pas rajouter de Serial.printx dans le loop 
+  //masterBTConnect("BaseRoulanteGE2");
+  //Serial.printf("fin ble init\n"); //Ne pas rajouter de Serial.printx dans le loop 
                                   //sinon cela augmente le temps de loop on risque d'avoir un TE faux
   Encodeur_Init();
   Serial.printf("fin encodeur init\n");
@@ -168,11 +169,11 @@ void loop() {
     remplirStruct(DATArobot,ERREUR_TEMP_CALCUL,2, mscount,TE_100US,0,0,0,0,0,0);
     writeStructInCAN(DATArobot);
     
-    if (deviceConnected){
-        pTxCharacteristic->setValue((uint8_t *)&DATArobot, sizeof(DATArobot));
-		pTxCharacteristic->notify();
-    ////Serial.println("Sending via BT...");
-    }else{if(!nbprint){Serial.println("The device is not connected"); nbprint ++;}}
+    // if (deviceConnected){
+    //     pTxCharacteristic->setValue((uint8_t *)&DATArobot, sizeof(DATArobot));
+	// 	pTxCharacteristic->notify();
+    // ////Serial.println("Sending via BT...");
+    // }else{if(!nbprint){Serial.println("The device is not connected"); nbprint ++;}}
 
     
   }
@@ -186,7 +187,7 @@ void loop() {
   //digitalWrite(27, set);//pour mesurer le temps de boucle avec l'oscilloscope
   //set = !set; temps de boucle = 1/(freq/2)
 
-  BtActualise();
+  //BtActualise();
   mscount = 0;    
 
   
@@ -241,20 +242,20 @@ void calcul(void){//fait!!
             //Serial.println("ID_DBUG_ETAT");
             remplirStruct(DATArobot,ID_DBUG_ETAT, 1, etat_prec, 0,0,0,0,0,0,0);
             writeStructInCAN(DATArobot);                             //CAN
-            if (deviceConnected){
-                pTxCharacteristic->setValue((uint8_t *)&DATArobot, sizeof(DATArobot));
-		        pTxCharacteristic->notify();
-    ////Serial.println("Sending via BT...");
-        }else{if(!nbprint){Serial.println("The device is not connected"); nbprint ++;}}
+    //         if (deviceConnected){
+    //             pTxCharacteristic->setValue((uint8_t *)&DATArobot, sizeof(DATArobot));
+	// 	        pTxCharacteristic->notify();
+    // ////Serial.println("Sending via BT...");
+    //     }else{if(!nbprint){Serial.println("The device is not connected"); nbprint ++;}}
             
             #if F_DBUG_ETAT_DPL
             remplirStruct(DATArobot,ID_DBUG_ETAT_DPL, 1, etat_automate_depl, 0,0,0,0,0,0,0);
             writeStructInCAN(DATArobot);                             //CAN
-            if (deviceConnected){
-                pTxCharacteristic->setValue((uint8_t *)&DATArobot, sizeof(DATArobot));
-		        pTxCharacteristic->notify();
-    ////Serial.println("Sending via BT...");
-        }else{if(!nbprint){Serial.println("The device is not connected"); nbprint ++;}}
+    //         if (deviceConnected){
+    //             pTxCharacteristic->setValue((uint8_t *)&DATArobot, sizeof(DATArobot));
+	// 	        pTxCharacteristic->notify();
+    // ////Serial.println("Sending via BT...");
+    //     }else{if(!nbprint){Serial.println("The device is not connected"); nbprint ++;}}
             #endif
         }
         #endif
@@ -652,12 +653,18 @@ void calcul(void){//fait!!
                 Chaque id de message reçu, une tâche associé 
 ***************************************************************************************/
 void CANloop(){
-  if(canAvailable || BtAvailable){
-    if(canAvailable){canReadExtRtr();}//On le me ici pour ne pas surcharger l'interruption CAN.onRecveive
-    canAvailable = false; BtAvailable = false;
+    static signed char FIFO_lecture=0,FIFO_occupation=0,FIFO_max_occupation=0;
+
+    FIFO_occupation=FIFO_ecriture-FIFO_lecture;
+    if(FIFO_occupation<0){FIFO_occupation=FIFO_occupation+SIZE_FIFO;}
+    if(FIFO_max_occupation<FIFO_occupation){FIFO_max_occupation=FIFO_occupation;}
+
+//   if(canAvailable || BtAvailable){
+    // if(canAvailable){canReadExtRtr();}//On le me ici pour ne pas surcharger l'interruption CAN.onRecveive
+    // canAvailable = false; BtAvailable = false;
     ////Serial.println("CAN received");
-    
-    switch (DATAtoControl.ID)
+    if(!FIFO_occupation){return;}
+    switch (rxMsg[FIFO_lecture].ID)
     {
 
             case ESP32_RESTART:
@@ -672,40 +679,40 @@ void CANloop(){
                 CANenvoiMsg1x8Bytes(ASSERVISSEMENT_CONFIG_KPD, &KdpD);
                 break;
             case ASSERVISSEMENT_CONFIG_KPP_DROITE:
-                memcpy(&KppD, DATAtoControl.dt, 8);
+                memcpy(&KppD, rxMsg[FIFO_lecture].dt, 8);
                 KppDa = KppD;
                 ////Serial.println("ASSERVISSEMENT_CONFIG_KPP_DROITE");
                 break;
             case ASSERVISSEMENT_CONFIG_KPI_DROITE:
-                memcpy(&KipD, DATAtoControl.dt, 8);
+                memcpy(&KipD, rxMsg[FIFO_lecture].dt, 8);
                 KipDa = KipD;
                 ////Serial.println("ASSERVISSEMENT_CONFIG_KPI_DROITE");
                 break;
             case ASSERVISSEMENT_CONFIG_KPD_DROITE:
-                memcpy(&KdpD, DATAtoControl.dt, 8);
+                memcpy(&KdpD, rxMsg[FIFO_lecture].dt, 8);
                 KdpDa = KdpD;
                 ////Serial.println("ASSERVISSEMENT_CONFIG_KPD_DROITE");
                 break;
                 
             case ASSERVISSEMENT_CONFIG_KPP_GAUCHE:
-                memcpy(&KppG, DATAtoControl.dt, 8);
+                memcpy(&KppG, rxMsg[FIFO_lecture].dt, 8);
                 KppGa = KppG;
                 ////Serial.println("ASSERVISSEMENT_CONFIG_KPP_GAUCHE");
                 break;
             case ASSERVISSEMENT_CONFIG_KPI_GAUCHE :
-                memcpy(&KipG, DATAtoControl.dt, 8);
+                memcpy(&KipG, rxMsg[FIFO_lecture].dt, 8);
                 KipGa = KipG;
                 ////Serial.println("ASSERVISSEMENT_CONFIG_KPI_GAUCHE");
                 break;
             case ASSERVISSEMENT_CONFIG_KPD_GAUCHE :
-                memcpy(&KdpG, DATAtoControl.dt, 8);
+                memcpy(&KdpG, rxMsg[FIFO_lecture].dt, 8);
                 KdpGa = KdpG;
                 ////Serial.println("ASSERVISSEMENT_CONFIG_KPD_GAUCHE");
                 break;
                 
             case ASSERVISSEMENT_CONFIG_KPP:{
                 Kp = 0;
-                memcpy(&Kp, DATAtoControl.dt, 8);
+                memcpy(&Kp, rxMsg[FIFO_lecture].dt, 8);
                 
                 AsserInitCoefs(Kp, Ki, Kd);
                 Serial.print("  ASSERVISSEMENT_CONFIG_KPP : ");
@@ -715,7 +722,7 @@ void CANloop(){
                 break;
             case ASSERVISSEMENT_CONFIG_KPI :
                 Ki = 0;
-                memcpy(&Ki, DATAtoControl.dt, 8);
+                memcpy(&Ki, rxMsg[FIFO_lecture].dt, 8);
                 AsserInitCoefs(Kp, Ki, Kd);
                 Serial.print("  ASSERVISSEMENT_CONFIG_KPI : ");
                 Serial.printf("%f ", Ki);
@@ -723,7 +730,7 @@ void CANloop(){
                 break;
             case ASSERVISSEMENT_CONFIG_KPD :
                 Kd = 0;
-                memcpy(&Kd, DATAtoControl.dt, 8);
+                memcpy(&Kd, rxMsg[FIFO_lecture].dt, 8);
                 AsserInitCoefs(Kp, Ki, Kd); 
                 Serial.print("  ASSERVISSEMENT_CONFIG_KPD : ");
                 Serial.printf("%f ", Kd);
@@ -731,14 +738,14 @@ void CANloop(){
                 break;
 
             case ASSERVISSEMENT_CONFIG_PERIMETRE_ROUE_CODEUSE :
-                memcpy(&PERIMETRE_ROUE_CODEUSE, DATAtoControl.dt, 8);
+                memcpy(&PERIMETRE_ROUE_CODEUSE, rxMsg[FIFO_lecture].dt, 8);
                 AsserInitCoefs(Kp, Ki, Kd); 
                 Serial.print("  ASSERVISSEMENT_CONFIG_PERIMETRE_ROUE_CODEUSE : ");
                 Serial.printf("%f ", PERIMETRE_ROUE_CODEUSE);
                 //Serial.println();
                 break;
             case ASSERVISSEMENT_CONFIG_LARGEUR_ROBOT :
-                memcpy(&LARGEUR_ROBOT, DATAtoControl.dt, 8);
+                memcpy(&LARGEUR_ROBOT, rxMsg[FIFO_lecture].dt, 8);
                 AsserInitCoefs(Kp, Ki, Kd); 
                 Serial.print("  ASSERVISSEMENT_CONFIG_LARGEUR_ROBOT : ");
                 Serial.printf("%f ", LARGEUR_ROBOT);
@@ -749,7 +756,7 @@ void CANloop(){
                 break;
                 
             case ASSERVISSEMENT_ENABLE :
-                asser_actif = DATAtoControl.dt[0];
+                asser_actif = rxMsg[FIFO_lecture].dt[0];
                 if(asser_actif == 1)
                 {
                     roue_drt_init = lireCodeurD();
@@ -761,8 +768,8 @@ void CANloop(){
             case ASSERVISSEMENT_DECEL :
                 {
                     double k = TE/0.02;
-                    VMAX = ((double)DATAtoControl.dt[0]+256*DATAtoControl.dt[1])*k;
-                    DMAX = ((double)DATAtoControl.dt[2]+256*DATAtoControl.dt[3])*k*k;
+                    VMAX = ((double)rxMsg[FIFO_lecture].dt[0]+256*rxMsg[FIFO_lecture].dt[1])*k;
+                    DMAX = ((double)rxMsg[FIFO_lecture].dt[2]+256*rxMsg[FIFO_lecture].dt[3])*k*k;
                     ralentare = 1;
                     ////Serial.println("ACKNOWLEDGE_MOTEUR");
                     remplirStruct(DATArobot,ACKNOWLEDGE_MOTEUR, 2, ASSERVISSEMENT_DECEL, 0,0,0,0,0,0,0);
@@ -781,11 +788,11 @@ void CANloop(){
                     nb_ordres = 0;
                     cpt_ordre = 0;//ne sert à rien mais au cas où, au futur...
 
-                    liste.x = (DATAtoControl.dt[1] << 8) | DATAtoControl.dt[0];
-                    liste.y = (DATAtoControl.dt[3] << 8) | DATAtoControl.dt[2];
+                    liste.x = (rxMsg[FIFO_lecture].dt[1] << 8) | rxMsg[FIFO_lecture].dt[0];
+                    liste.y = (rxMsg[FIFO_lecture].dt[3] << 8) | rxMsg[FIFO_lecture].dt[2];
                     // liste.y *= -1;
-                    liste.theta = (DATAtoControl.dt[5] << 8) | DATAtoControl.dt[4];
-                    liste.sens =  DATAtoControl.dt[6];
+                    liste.theta = (rxMsg[FIFO_lecture].dt[5] << 8) | rxMsg[FIFO_lecture].dt[4];
+                    liste.sens =  rxMsg[FIFO_lecture].dt[6];
                     liste.type = TYPE_DEPLACEMENT_X_Y_THETA;
                     liste.vmax = VMAX;
                     liste.amax = AMAX;        
@@ -802,11 +809,11 @@ void CANloop(){
                 /* `#START MESSAGE_Rayon_de_courbure_RECEIVED` */
                 stop_receive = 0;
 
-                int16_t rayon = (DATAtoControl.dt[1] << 8) | DATAtoControl.dt[0];
-                int16_t theta = (DATAtoControl.dt[3] << 8) | DATAtoControl.dt[2];
-                uint8_t sens = DATAtoControl.dt[4];
-                uint8_t enchainement = DATAtoControl.dt[5];
-                uint8_t speedRatio = DATAtoControl.dt[6];
+                int16_t rayon = (rxMsg[FIFO_lecture].dt[1] << 8) | rxMsg[FIFO_lecture].dt[0];
+                int16_t theta = (rxMsg[FIFO_lecture].dt[3] << 8) | rxMsg[FIFO_lecture].dt[2];
+                uint8_t sens = rxMsg[FIFO_lecture].dt[4];
+                uint8_t enchainement = rxMsg[FIFO_lecture].dt[5];
+                uint8_t speedRatio = rxMsg[FIFO_lecture].dt[6];
         
                 if (enchainement)
                 {
@@ -852,8 +859,8 @@ void CANloop(){
             case ASSERVISSEMENT_CONFIG:
             {
                 double k = TE/0.02;
-                int16_t vmax = (DATAtoControl.dt[1] << 8) | DATAtoControl.dt[0];
-                int16_t amax = (DATAtoControl.dt[3] << 8) | DATAtoControl.dt[2];
+                int16_t vmax = (rxMsg[FIFO_lecture].dt[1] << 8) | rxMsg[FIFO_lecture].dt[0];
+                int16_t amax = (rxMsg[FIFO_lecture].dt[3] << 8) | rxMsg[FIFO_lecture].dt[2];
                 VMAX = ((double)vmax)*k;
                 AMAX = ((double)amax)*k*k;
                 DMAX = ((double)amax)*0.75*k*k;
@@ -873,7 +880,7 @@ void CANloop(){
                 nb_ordres = 0;
                 cpt_ordre = 0;
 
-                int16_t angle = (DATAtoControl.dt[1] << 8) | DATAtoControl.dt[0];
+                int16_t angle = (rxMsg[FIFO_lecture].dt[1] << 8) | rxMsg[FIFO_lecture].dt[0];
         
                 liste.type = TYPE_DEPLACEMENT_ROTATION;
                 liste.angle = LARGEUR_ROBOT * M_PI * RESOLUTION_ROUE_CODEUSE * angle / (3600 * PERIMETRE_ROUE_CODEUSE);
@@ -890,12 +897,12 @@ void CANloop(){
             {
                 stop_receive = 0;
 
-                int16_t distance = (DATAtoControl.dt[1] << 8) | DATAtoControl.dt[0];
-                uint8_t mode = DATAtoControl.dt[2];
-                int16_t valRecalage = (DATAtoControl.dt[4] << 8) | DATAtoControl.dt[3];
-                uint8_t enchainement = DATAtoControl.dt[5];
-                int8_t vinit = DATAtoControl.dt[6];
-                int8_t vfin = DATAtoControl.dt[7];
+                int16_t distance = (rxMsg[FIFO_lecture].dt[1] << 8) | rxMsg[FIFO_lecture].dt[0];
+                uint8_t mode = rxMsg[FIFO_lecture].dt[2];
+                int16_t valRecalage = (rxMsg[FIFO_lecture].dt[4] << 8) | rxMsg[FIFO_lecture].dt[3];
+                uint8_t enchainement = rxMsg[FIFO_lecture].dt[5];
+                int8_t vinit = rxMsg[FIFO_lecture].dt[6];
+                int8_t vfin = rxMsg[FIFO_lecture].dt[7];
 
                  
         
@@ -975,9 +982,9 @@ void CANloop(){
                  /* `#START MESSAGE_Courbe_Bezier_RECEIVED` */
         
                 // distance roue droite en ticks d'encodeur
-                int32_t distRoueDroite = (DATAtoControl.dt[3] << 24) | (DATAtoControl.dt[2] << 16) | (DATAtoControl.dt[1] << 8) | DATAtoControl.dt[0];          //distance roue droite(4/4) |
+                int32_t distRoueDroite = (rxMsg[FIFO_lecture].dt[3] << 24) | (rxMsg[FIFO_lecture].dt[2] << 16) | (rxMsg[FIFO_lecture].dt[1] << 8) | rxMsg[FIFO_lecture].dt[0];          //distance roue droite(4/4) |
                 // distance roue gauche en ticks d'encodeur
-                int32_t distRoueGauche = (DATAtoControl.dt[7] << 24) | (DATAtoControl.dt[6] << 16) | (DATAtoControl.dt[5] << 8) | DATAtoControl.dt[4];
+                int32_t distRoueGauche = (rxMsg[FIFO_lecture].dt[7] << 24) | (rxMsg[FIFO_lecture].dt[6] << 16) | (rxMsg[FIFO_lecture].dt[5] << 8) | rxMsg[FIFO_lecture].dt[4];
         
                 //Reception premiere valeur de la courbe
                 if(flagDebutBezier == 0)
@@ -1006,9 +1013,9 @@ void CANloop(){
             break;  
             case ODOMETRIE_SMALL_POSITION:
             {
-                Odo_x = (DATAtoControl.dt[1] << 8) | DATAtoControl.dt[0];
-                Odo_y = (DATAtoControl.dt[3] << 8) | DATAtoControl.dt[2];
-                Odo_theta = (DATAtoControl.dt[5] << 8) | DATAtoControl.dt[4];
+                Odo_x = (rxMsg[FIFO_lecture].dt[1] << 8) | rxMsg[FIFO_lecture].dt[0];
+                Odo_y = (rxMsg[FIFO_lecture].dt[3] << 8) | rxMsg[FIFO_lecture].dt[2];
+                Odo_theta = (rxMsg[FIFO_lecture].dt[5] << 8) | rxMsg[FIFO_lecture].dt[4];
 
                 remplirStruct(DATArobot,ACKNOWLEDGE_MOTEUR,ODOMETRIE_SMALL_POSITION,0,0,0,0,0,0,0,0);
                 writeStructInCAN(DATArobot);
@@ -1021,9 +1028,9 @@ void CANloop(){
             break;
             case ODOMETRIE_BIG_POSITION:
             {
-                Odo_x = (DATAtoControl.dt[1] << 8) | DATAtoControl.dt[0];
-                Odo_y = (DATAtoControl.dt[3] << 8) | DATAtoControl.dt[2];
-                Odo_theta = (DATAtoControl.dt[5] << 8) | DATAtoControl.dt[4];
+                Odo_x = (rxMsg[FIFO_lecture].dt[1] << 8) | rxMsg[FIFO_lecture].dt[0];
+                Odo_y = (rxMsg[FIFO_lecture].dt[3] << 8) | rxMsg[FIFO_lecture].dt[2];
+                Odo_theta = (rxMsg[FIFO_lecture].dt[5] << 8) | rxMsg[FIFO_lecture].dt[4];
                 remplirStruct(DATArobot,ACKNOWLEDGE_MOTEUR,ODOMETRIE_BIG_POSITION,0,0,0,0,0,0,0,0);
                 writeStructInCAN(DATArobot);
             }
@@ -1062,8 +1069,8 @@ void CANloop(){
 
 //---------------------------------------------Qt
             case ASSERVISSEMENT_CONFIG_KPP_Qt:{
-                Kp = ((DATAtoControl.dt[0] << 24) | (DATAtoControl.dt[1] << 16) | 
-                      (DATAtoControl.dt[2] << 8) | DATAtoControl.dt[3]) / 1000.000;  
+                Kp = ((rxMsg[FIFO_lecture].dt[0] << 24) | (rxMsg[FIFO_lecture].dt[1] << 16) | 
+                      (rxMsg[FIFO_lecture].dt[2] << 8) | rxMsg[FIFO_lecture].dt[3]) / 1000.000;  
                 
                 AsserInitCoefs(Kp, Ki, Kd);
                 Serial.print("  ASSERVISSEMENT_CONFIG_KPP Qt: ");
@@ -1072,8 +1079,8 @@ void CANloop(){
                 }
                 break;
             case ASSERVISSEMENT_CONFIG_KPI_Qt :
-                Ki = ((DATAtoControl.dt[0] << 24) | (DATAtoControl.dt[1] << 16) | 
-                      (DATAtoControl.dt[2] << 8) | DATAtoControl.dt[3]) / 1000.000;  
+                Ki = ((rxMsg[FIFO_lecture].dt[0] << 24) | (rxMsg[FIFO_lecture].dt[1] << 16) | 
+                      (rxMsg[FIFO_lecture].dt[2] << 8) | rxMsg[FIFO_lecture].dt[3]) / 1000.000;  
 
                 AsserInitCoefs(Kp, Ki, Kd);
                 Serial.print("  ASSERVISSEMENT_CONFIG_KPI Qt: ");
@@ -1081,8 +1088,8 @@ void CANloop(){
                 //Serial.println();
                 break;
             case ASSERVISSEMENT_CONFIG_KPD_Qt :
-                Kd= ((DATAtoControl.dt[0] << 24) | (DATAtoControl.dt[1] << 16) | 
-                      (DATAtoControl.dt[2] << 8) | DATAtoControl.dt[3]) / 1000.000;  
+                Kd= ((rxMsg[FIFO_lecture].dt[0] << 24) | (rxMsg[FIFO_lecture].dt[1] << 16) | 
+                      (rxMsg[FIFO_lecture].dt[2] << 8) | rxMsg[FIFO_lecture].dt[3]) / 1000.000;  
                      
                 AsserInitCoefs(Kp, Ki, Kd); 
                 Serial.print("  ASSERVISSEMENT_CONFIG_KPD Qt: ");
@@ -1090,8 +1097,8 @@ void CANloop(){
                 //Serial.println();
                 break;
             case ASSERVISSEMENT_CONFIG_LARGEUR_ROBOT_Qt :
-                LARGEUR_ROBOT = ((DATAtoControl.dt[0] << 24) | (DATAtoControl.dt[1] << 16) | 
-                                 (DATAtoControl.dt[2] << 8) | DATAtoControl.dt[3]) / 100.000;  
+                LARGEUR_ROBOT = ((rxMsg[FIFO_lecture].dt[0] << 24) | (rxMsg[FIFO_lecture].dt[1] << 16) | 
+                                 (rxMsg[FIFO_lecture].dt[2] << 8) | rxMsg[FIFO_lecture].dt[3]) / 100.000;  
                      
                 AsserInitCoefs(Kp, Ki, Kd); 
                 Serial.print("  ASSERVISSEMENT_CONFIG_LARGEUR_ROBOT_Qt: ");
@@ -1099,8 +1106,8 @@ void CANloop(){
                 //Serial.println();
                 break;
             case ASSERVISSEMENT_CONFIG_PERIMETRE_ROUE_CODEUSE_Qt :
-                PERIMETRE_ROUE_CODEUSE= ((DATAtoControl.dt[0] << 24) | (DATAtoControl.dt[1] << 16) | 
-                                         (DATAtoControl.dt[2] << 8) | DATAtoControl.dt[3]) / 100.000;  
+                PERIMETRE_ROUE_CODEUSE= ((rxMsg[FIFO_lecture].dt[0] << 24) | (rxMsg[FIFO_lecture].dt[1] << 16) | 
+                                         (rxMsg[FIFO_lecture].dt[2] << 8) | rxMsg[FIFO_lecture].dt[3]) / 100.000;  
                      
                 AsserInitCoefs(Kp, Ki, Kd); 
                 Serial.print("  ASSERVISSEMENT_CONFIG_PERIMETRE_ROUE_CODEUSE_Qt : ");
@@ -1117,17 +1124,17 @@ void CANloop(){
     }
     // Send message to master via bleutooth
     /*if (connected){
-      prxRemoteCharacteristic->writeValue((uint8_t *)&DATAtoControl, sizeof(DATAtoControl));
+      prxRemoteCharacteristic->writeValue((uint8_t *)&rxMsg[FIFO_lecture], sizeof(rxMsg[FIFO_lecture]));
       //Serial.println("Sending via BT...");
     } else{//Serial.println("The device is not connected");}*/
-  }
+//   }
   //if new CAN by BT are available, write it in CAN bus / CAN <-> Bt <-> CAN and use it to control the Robot
-  if (newCan){
-    newCan = false;
-    writeStructInCAN(DATAtoControl); 
-    ////Serial.println(DATAtoControl.ID);
-    BtAvailable = true;
-  }
+//   if (newCan){
+//     newCan = false;
+//     writeStructInCAN(rxMsg[FIFO_lecture]); 
+//     ////Serial.println(rxMsg[FIFO_lecture].ID);
+//     BtAvailable = true;
+//   }
   
 }
 
@@ -2846,32 +2853,37 @@ void writeStructInCAN(const CANMessage &theDATA){
   //Serial.println();*/
 }
 void canReadData(int packetSize){
-  remplirStruct(DATAtoControl, 0,0,0,0,0,0,0,0,0,0);
-  DATAtoControl.ID = CAN.packetId();
-  DATAtoControl.ln = CAN.packetDlc();
-  //Serial.printf("Received CAN, ID : 0x%.3X ; len : %d\n", DATAtoControl.ID, DATAtoControl.ln);
-  // only print packet DATAtoControl.dt for non-RTR packets
+  remplirStruct(rxMsg[FIFO_ecriture], 0,0,0,0,0,0,0,0,0,0);
+  rxMsg[FIFO_ecriture].ID = CAN.packetId();
+  rxMsg[FIFO_ecriture].ln = CAN.packetDlc();
+  //Serial.printf("Received CAN, ID : 0x%.3X ; len : %d\n", rxMsg[FIFO_ecriture].ID, rxMsg[FIFO_ecriture].ln);
+  // only print packet rxMsg[FIFO_ecriture].dt for non-RTR packets
   int i = 0;
   while (CAN.available())
   {
-    DATAtoControl.dt[i]=CAN.read();
+    rxMsg[FIFO_ecriture].dt[i]=CAN.read();
     i++;
   }
-  canAvailable = true;
+//   canAvailable = true;
+    FIFO_ecriture=(FIFO_ecriture+1)%SIZE_FIFO;
 }
-void canReadExtRtr(){
+
+void canReadExtRtr(){//On n'execute plus cette fonction pour compléter la msg CAN car on part du principe qu'on n'utilise pas de ID extented et de msg rtr
   if (CAN.packetExtended()){
       //Serial.print("extended ");
-      DATAtoControl.extented = true;
-  }else{DATAtoControl.extented = false;}
+      rxMsg[FIFO_ecriture].extented = true;
+  }else{rxMsg[FIFO_ecriture].extented = false;}
   if (CAN.packetRtr()){
-      // Remote transmission request, packet contains no DATAtoControl.dt
+      // Remote transmission request, packet contains no rxMsg[FIFO_ecriture].dt
       //Serial.print("RTR ");
-      DATAtoControl.RTR = true;
+      rxMsg[FIFO_ecriture].RTR = true;
   }
-  else{DATAtoControl.RTR = false;}
-  //printCANMsg(DATAtoControl);
+  else{rxMsg[FIFO_ecriture].RTR = false;}
+  
+  //printCANMsg(rxMsg[FIFO_ecriture]);
+//   FIFO_ecriture=(FIFO_ecriture+1)%SIZE_FIFO;
 }
+
 void readDATA(std::string contenuBT, CANMessage &theDATA){
 
   theDATA.extented = contenuBT[0];

@@ -9,13 +9,7 @@
 #include <Wire.h>
 //----------------------------------------------------------------------Variables
 
-BLEServer *pServer = NULL;
-BLECharacteristic * pTxCharacteristic;
-bool deviceConnected = false;
-bool oldDeviceConnected = false;
-uint8_t txValue = 0;
-bool canAvailable = false;
-bool newCan = false, BtAvailable = false;
+
 // See the following for generating UUIDs:
 // https://www.uuidgenerator.net/
 
@@ -23,6 +17,7 @@ bool newCan = false, BtAvailable = false;
 #define CHARACTERISTIC_UUID_RX "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
 #define CHARACTERISTIC_UUID_TX "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
 
+#define SIZE_FIFO 32
 
 typedef struct CANMessage {
   bool extented = false;
@@ -33,8 +28,18 @@ typedef struct CANMessage {
 } CANMessage;
 CANMessage myData;//data received by BT to write on CAN
 CANMessage DATAtoSend;//data received by CAN to send on BT
-CANMessage DATAtoControl;//data received by CAN to control the robot
+CANMessage rxMsg[SIZE_FIFO];//data received by CAN to control the robot
 CANMessage DATArobot;//DATA that the robot will write on CAN
+
+unsigned char FIFO_ecriture = 0;
+
+BLEServer *pServer = NULL;
+BLECharacteristic * pTxCharacteristic;
+bool deviceConnected = false;
+bool oldDeviceConnected = false;
+uint8_t txValue = 0;
+bool canAvailable = false;
+bool newCan = false, BtAvailable = false;
 //----------------------------------------------------------------------prototypes fonctions BLE et CAN
 
 char vitesse_danger = 0, Stop_Danger = 0, asser_actif = 1, attente = 0, mode_xyt = 0,
