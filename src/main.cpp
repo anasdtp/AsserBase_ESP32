@@ -1135,6 +1135,8 @@ void CANloop(){
 //     ////Serial.println(rxMsg[FIFO_lecture].ID);
 //     BtAvailable = true;
 //   }
+
+    FIFO_lecture=(FIFO_lecture+1)%SIZE_FIFO;
   
 }
 
