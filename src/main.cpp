@@ -101,6 +101,7 @@ void CANenvoiMsg1x8Bytes(uint32_t id, void *pdata);
 void CANenvoiMsg2x4Bytes(uint32_t id, void *pdata1, void *pdata2);
 void remplirStruct2x4Bytes(uint32_t id, void *pdata1, void *pdata2);
 void CANenvoiMsg3x2Bytes(uint32_t id, int16_t data1, int16_t data2, int16_t data3);
+bool onPrendsEnCompte(uint16_t ID);
 void BtActualise();
 //----------------------------------------------------------------------callback fonctions
 class MyServerCallbacks : public BLEServerCallbacks {
@@ -659,10 +660,10 @@ void CANloop(){
     if(FIFO_occupation<0){FIFO_occupation=FIFO_occupation+SIZE_FIFO;}
     if(FIFO_max_occupation<FIFO_occupation){FIFO_max_occupation=FIFO_occupation;}
 
-//   if(canAvailable || BtAvailable){
+/*   //if(canAvailable || BtAvailable){
     // if(canAvailable){canReadExtRtr();}//On le me ici pour ne pas surcharger l'interruption CAN.onRecveive
     // canAvailable = false; BtAvailable = false;
-    ////Serial.println("CAN received");
+    ////Serial.println("CAN received");*/
     if(!FIFO_occupation){return;}
     switch (rxMsg[FIFO_lecture].ID)
     {
@@ -1122,11 +1123,13 @@ void CANloop(){
             default :
             break;
     }
+    
+    /*
     // Send message to master via bleutooth
-    /*if (connected){
+    if (connected){
       prxRemoteCharacteristic->writeValue((uint8_t *)&rxMsg[FIFO_lecture], sizeof(rxMsg[FIFO_lecture]));
       //Serial.println("Sending via BT...");
-    } else{//Serial.println("The device is not connected");}*/
+    } else{//Serial.println("The device is not connected");}
 //   }
   //if new CAN by BT are available, write it in CAN bus / CAN <-> Bt <-> CAN and use it to control the Robot
 //   if (newCan){
@@ -1134,8 +1137,7 @@ void CANloop(){
 //     writeStructInCAN(rxMsg[FIFO_lecture]); 
 //     ////Serial.println(rxMsg[FIFO_lecture].ID);
 //     BtAvailable = true;
-//   }
-
+//   }*/
     FIFO_lecture=(FIFO_lecture+1)%SIZE_FIFO;
   
 }
@@ -2855,8 +2857,9 @@ void writeStructInCAN(const CANMessage &theDATA){
   //Serial.println();*/
 }
 void canReadData(int packetSize){
-  remplirStruct(rxMsg[FIFO_ecriture], 0,0,0,0,0,0,0,0,0,0);
+  remplirStruct(rxMsg[FIFO_ecriture], 0,0,0,0,0,0,0,0,0,0); //A tester si ça ne surcharge pas
   rxMsg[FIFO_ecriture].ID = CAN.packetId();
+  if(!onPrendsEnCompte(rxMsg[FIFO_ecriture].ID)){return;}//A regarder si rajouter ça ça ne surcharge pas l'interruption
   rxMsg[FIFO_ecriture].ln = CAN.packetDlc();
   //Serial.printf("Received CAN, ID : 0x%.3X ; len : %d\n", rxMsg[FIFO_ecriture].ID, rxMsg[FIFO_ecriture].ln);
   // only print packet rxMsg[FIFO_ecriture].dt for non-RTR packets
@@ -3126,3 +3129,131 @@ void init_coef(){
     DMAX = Dmax_coef*0.75*k*k;   //  500    petit 6000   gros 6000
     liste = (struct Ordre_deplacement){TYPE_DEPLACEMENT_IMMOBILE,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 }
+
+
+bool onPrendsEnCompte(uint16_t ID){
+    switch (ID)
+    {
+            case ESP32_RESTART:
+                return true;
+                break;
+            case ASSERVISSEMENT_REQUETE_PID:
+                return true;
+                break;
+            case ASSERVISSEMENT_CONFIG_KPP_DROITE:
+                return true;
+                break;
+            case ASSERVISSEMENT_CONFIG_KPI_DROITE:
+                return true;
+                break;
+            case ASSERVISSEMENT_CONFIG_KPD_DROITE:
+                return true;
+                break;
+                
+            case ASSERVISSEMENT_CONFIG_KPP_GAUCHE:
+                return true;
+                break;
+            case ASSERVISSEMENT_CONFIG_KPI_GAUCHE :
+                return true;
+                break;
+            case ASSERVISSEMENT_CONFIG_KPD_GAUCHE :
+                return true;
+                break;
+                
+            case ASSERVISSEMENT_CONFIG_KPP:{
+                return true;
+                }
+                break;
+            case ASSERVISSEMENT_CONFIG_KPI :
+                return true;
+                break;
+            case ASSERVISSEMENT_CONFIG_KPD :
+                return true;
+                break;
+
+            case ASSERVISSEMENT_CONFIG_PERIMETRE_ROUE_CODEUSE :
+                return true;
+                break;
+            case ASSERVISSEMENT_CONFIG_LARGEUR_ROBOT :
+                return true;
+                break;
+            case ECRAN_CHOICE_COLOR :
+                return true;
+                break;
+                
+            case ASSERVISSEMENT_ENABLE :
+                return true;
+            break;
+                
+            case ASSERVISSEMENT_DECEL :
+                return true;
+            break;
+            case ASSERVISSEMENT_XYT :
+                return true;
+            break;
+            case ASSERVISSEMENT_COURBURE:
+                return true;
+            break;  
+            case ASSERVISSEMENT_CONFIG:
+                return true;
+            break;
+            case ASSERVISSEMENT_ROTATION:
+                return true;
+            break;  
+            case ASSERVISSEMENT_RECALAGE:
+                return true;
+            break;
+            case ASSERVISSEMENT_BEZIER:
+                return true;
+            break;  
+            case ODOMETRIE_SMALL_POSITION:
+                return true;
+            break;
+            case ODOMETRIE_SMALL_VITESSE:
+                return true;
+            break;
+            case ODOMETRIE_BIG_POSITION:
+                return true;
+            break;
+            case ODOMETRIE_BIG_VITESSE:
+                return true;
+            break;
+            case GLOBAL_GAME_END:
+                return true;
+            break;
+            case ASSERVISSEMENT_STOP:
+                return true;
+            break;  
+            case CHECK_MOTEUR:
+                return true;
+            break;
+
+//---------------------------------------------Qt
+            case ASSERVISSEMENT_CONFIG_KPP_Qt:
+                return true;
+                break;
+            case ASSERVISSEMENT_CONFIG_KPI_Qt :
+                return true;
+                break;
+            case ASSERVISSEMENT_CONFIG_KPD_Qt :
+                return true;
+                break;
+            case ASSERVISSEMENT_CONFIG_LARGEUR_ROBOT_Qt :
+                return true;
+                break;
+            case ASSERVISSEMENT_CONFIG_PERIMETRE_ROUE_CODEUSE_Qt :
+                return true;
+                break;
+            case IDCAN_POS_XY_OBJET:{
+                return true;
+            }break;
+            
+            default :
+            return false;
+            break;
+    }
+
+    return false;
+  
+}
+
