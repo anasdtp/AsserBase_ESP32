@@ -68,7 +68,7 @@
 
     
 #define ASSERVISSEMENT_DECEL 0x019 
-#define ASSERVISSEMENT_BEZIER 0x008
+#define ASSERVISSEMENT_BEZIER 0x02A
 
 #define RESET_BALISE 0x030  // Reset balise
 #define RESET_MOTEUR 0x031  // Reset moteur
@@ -95,7 +95,7 @@
 #define ACKNOWLEDGE_MOTEUR 0x101  // Acknowledge moteur
 #define ACKNOWLEDGE_IHM 0x102  // Acknowledge ecran tactile
 #define ACKNOWLEDGE_ACTIONNEURS 0x103  // Acknowledge actionneurs
-#define ACKNOWLEDGE_BEZIER 0x009 //Acknowledge bezier
+#define ACKNOWLEDGE_BEZIER 0x104 //Acknowledge bezier
 
 
 #define INSTRUCTION_END_BALISE 0x110  // Fin instruction balise  (Indique que l'instruction est terminée)
