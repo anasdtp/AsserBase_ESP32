@@ -28,5 +28,19 @@ extern short           etat_automate, etat_automate_depl, new_message,
                 etat_automate_xytheta, ralentare;
 
 
+
+//prototypes fonctions CAN :
+void setupCAN();
+
+void canReadData(int packetSize);
+void canReadExtRtr();
+
 void remplirStruct(CANMessage &theDATA, int id, char len, char dt0, char dt1, char dt2, char dt3, char dt4, char dt5, char dt6, char dt7);
+void remplirStruct2x4Bytes(uint32_t id, void *pdata1, void *pdata2);
+
 void writeStructInCAN(const CANMessage &theDATA);
+void CANenvoiMsg1x8Bytes(uint32_t id, void *pdata);
+void CANenvoiMsg2x4Bytes(uint32_t id, void *pdata1, void *pdata2);
+void CANenvoiMsg3x2Bytes(uint32_t id, int16_t data1, int16_t data2, int16_t data3);
+
+void printCANMsg(CANMessage& msg);
