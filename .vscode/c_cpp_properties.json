@@ -10,6 +10,7 @@
             "includePath": [
                 "C:/Users/anasd/Documents/PlatformIO/Projects/AsserBas/include",
                 "C:/Users/anasd/Documents/PlatformIO/Projects/AsserBas/src",
+                "C:/Users/anasd/Documents/PlatformIO/Projects/AsserBas/lib/Moteur",
                 "C:/Users/anasd/Documents/PlatformIO/Projects/AsserBas/lib/Timer",
                 "C:/Users/anasd/Documents/PlatformIO/Projects/AsserBas/lib/Mouvement",
                 "C:/Users/anasd/Documents/PlatformIO/Projects/AsserBas/lib/EspCan",
@@ -248,6 +249,7 @@
                 "path": [
                     "C:/Users/anasd/Documents/PlatformIO/Projects/AsserBas/include",
                     "C:/Users/anasd/Documents/PlatformIO/Projects/AsserBas/src",
+                    "C:/Users/anasd/Documents/PlatformIO/Projects/AsserBas/lib/Moteur",
                     "C:/Users/anasd/Documents/PlatformIO/Projects/AsserBas/lib/Timer",
                     "C:/Users/anasd/Documents/PlatformIO/Projects/AsserBas/lib/Mouvement",
                     "C:/Users/anasd/Documents/PlatformIO/Projects/AsserBas/lib/EspCan",

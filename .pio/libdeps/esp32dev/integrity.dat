@@ -1,6 +1,7 @@
-madhephaestus/ESP32Encoder@^0.10.1
-Timer
-CAN
-Mouvement
-AsserBas
 EspCan
+madhephaestus/ESP32Encoder@^0.10.1
+AsserBas
+Mouvement
+CAN
+Timer
+Moteur
