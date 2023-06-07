@@ -129,41 +129,8 @@
  C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/spi_flash/include/esp_spi_flash.h \
  C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/spi_flash/include/esp_spi_flash_counters.h \
  C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/esp_hw_support/include/soc/esp32/spiram.h \
- lib/AsserBas/src/espBLEcan.h lib/AsserBas/src/CRAC_utility.h \
+ lib/AsserBas/src/espCan.h lib/AsserBas/src/CRAC_utility.h \
  lib/AsserBas/src/ident_crac.h lib/AsserBas/src/buffer_circulaire.h \
  lib/CAN/src/CAN.h lib/CAN/src/ESP32SJA1000.h lib/CAN/src/CANController.h \
- C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/libraries/BLE/src/BLEDevice.h \
- C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/bt/host/bluedroid/api/include/api/esp_gap_ble_api.h \
- C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/bt/host/bluedroid/api/include/api/esp_bt_defs.h \
- C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/bt/host/bluedroid/api/include/api/esp_gattc_api.h \
- C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/bt/host/bluedroid/api/include/api/esp_gatt_defs.h \
- C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/bt/include/esp32/include/esp_bt.h \
- C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/esp_system/include/esp_task.h \
- C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/freertos/include/esp_additions/freertos/FreeRTOSConfig.h \
- C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/libraries/BLE/src/BLEServer.h \
- C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/bt/host/bluedroid/api/include/api/esp_gatts_api.h \
- C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/libraries/BLE/src/BLEUUID.h \
- C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/bt/host/bluedroid/api/include/api/esp_gatt_defs.h \
- C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/libraries/BLE/src/BLEAdvertising.h \
- C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/libraries/BLE/src/RTOS.h \
- C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/esp_ringbuf/include/freertos/ringbuf.h \
- C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/libraries/BLE/src/BLECharacteristic.h \
- C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/libraries/BLE/src/BLEDescriptor.h \
- C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/libraries/BLE/src/BLEValue.h \
- C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/libraries/BLE/src/BLEService.h \
- C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/libraries/BLE/src/BLESecurity.h \
- C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/libraries/BLE/src/BLEAddress.h \
- C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/libraries/BLE/src/BLEClient.h \
- C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/libraries/BLE/src/BLERemoteService.h \
- C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/libraries/BLE/src/BLERemoteCharacteristic.h \
- C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/libraries/BLE/src/BLERemoteDescriptor.h \
- C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/libraries/BLE/src/BLEAdvertisedDevice.h \
- C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/libraries/BLE/src/BLEScan.h \
- C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/libraries/BLE/src/BLEUtils.h \
- C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/libraries/BLE/src/BLEServer.h \
- C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/libraries/BLE/src/BLEUtils.h \
- C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/libraries/BLE/src/BLE2902.h \
- C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/libraries/Wire/src/Wire.h \
- C:/Users/anasd/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal.h \
  lib/AsserBas/src/CRAC_utility.h lib/AsserBas/src/ident_crac.h \
  lib/AsserBas/src/buffer_circulaire.h lib/AsserBas/src/clotho.h

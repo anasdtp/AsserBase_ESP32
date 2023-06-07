@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------Bibliotheques
 #include <Arduino.h>
-#include "espBLEcan.h"
+#include "espCan.h"
 #include "CRAC_utility.h"
 #include "ident_crac.h"
 #include "buffer_circulaire.h"
@@ -87,14 +87,11 @@ int Courbe_bezier(double distanceG, double distanceD);
 void Moteur_Init();
 void setupPWM(int PWMpin, int PWMChannel);
 
-//prototypes fonctions BLE et CAN :
+//prototypes fonctions CAN :
 void setupCAN();
 void writeStructInCAN(const CANMessage &theDATA);
 void canReadData(int packetSize);
 void canReadExtRtr();
-void masterBTConnect(std::string name);
-bool connectToServer(BLEAddress pAddress);
-void readDATA(std::string contenuBT, CANMessage &theDATA);
 void printCANMsg(CANMessage& msg);
 void remplirStruct(CANMessage &theDATA, int id, char len, char dt0, char dt1, char dt2, char dt3, char dt4, char dt5, char dt6, char dt7);
 void CANenvoiMsg1x8Bytes(uint32_t id, void *pdata);
@@ -102,39 +99,13 @@ void CANenvoiMsg2x4Bytes(uint32_t id, void *pdata1, void *pdata2);
 void remplirStruct2x4Bytes(uint32_t id, void *pdata1, void *pdata2);
 void CANenvoiMsg3x2Bytes(uint32_t id, int16_t data1, int16_t data2, int16_t data3);
 bool onPrendsEnCompte(uint16_t ID);
-void BtActualise();
-//----------------------------------------------------------------------callback fonctions
-class MyServerCallbacks : public BLEServerCallbacks {
-	void onConnect(BLEServer* pServer) {
-		deviceConnected = true;
-    BLEDevice::startAdvertising();
-	}
-	;
 
-	void onDisconnect(BLEServer* pServer) {
-		deviceConnected = false;
-	}
-}
-;
-
-class MyCallbacks : public BLECharacteristicCallbacks {
-	void onWrite(BLECharacteristic *pCharacteristic) {
-		std::string rxValue = pCharacteristic->getValue();
-    readDATA(rxValue, rxMsg[FIFO_ecriture]);
-    FIFO_ecriture=(FIFO_ecriture+1)%SIZE_FIFO;
-    newCan = true;
-	}
-};
 //----------------------------------------------------------------------SETUP
 void setup() {
   Serial.begin(921600);
   init_coef();
   setupCAN();
   
-  //Init BLE device
-  //masterBTConnect("BaseRoulanteGE2");
-  //Serial.printf("fin ble init\n"); //Ne pas rajouter de Serial.printx dans le loop 
-                                  //sinon cela augmente le temps de loop on risque d'avoir un TE faux
   Encodeur_Init();
   Serial.printf("fin encodeur init\n");
   Moteur_Init();
@@ -160,42 +131,20 @@ void loop() {
   CANloop();
   calcul();
   Odometrie();
-  
-  //test du moteur droit ainsi que de son asservissement par la roue encodeuse droitey
-  
   if (mscount >= (TE_100US)) 
   {   
     //Serial.println("erreur temp calcul");
     //Serial.println(mscount);
     remplirStruct(DATArobot,ERREUR_TEMP_CALCUL,2, mscount,TE_100US,0,0,0,0,0,0);
     writeStructInCAN(DATArobot);
-    
-    // if (deviceConnected){
-    //     pTxCharacteristic->setValue((uint8_t *)&DATArobot, sizeof(DATArobot));
-	// 	pTxCharacteristic->notify();
-    // ////Serial.println("Sending via BT...");
-    // }else{if(!nbprint){Serial.println("The device is not connected"); nbprint ++;}}
-
-    
   }
   else 
   {
-    
     while (mscount<(TE_100US));
-    
   }
-
   //digitalWrite(27, set);//pour mesurer le temps de boucle avec l'oscilloscope
   //set = !set; temps de boucle = 1/(freq/2)
-
-  //BtActualise();
   mscount = 0;    
-
-  
-
-  
-
-     
 }
 //----------------------------------------------------------------------fonctions
 /***************************************************************************************
@@ -243,20 +192,9 @@ void calcul(void){//fait!!
             //Serial.println("ID_DBUG_ETAT");
             remplirStruct(DATArobot,ID_DBUG_ETAT, 1, etat_prec, 0,0,0,0,0,0,0);
             writeStructInCAN(DATArobot);                             //CAN
-    //         if (deviceConnected){
-    //             pTxCharacteristic->setValue((uint8_t *)&DATArobot, sizeof(DATArobot));
-	// 	        pTxCharacteristic->notify();
-    // ////Serial.println("Sending via BT...");
-    //     }else{if(!nbprint){Serial.println("The device is not connected"); nbprint ++;}}
-            
             #if F_DBUG_ETAT_DPL
             remplirStruct(DATArobot,ID_DBUG_ETAT_DPL, 1, etat_automate_depl, 0,0,0,0,0,0,0);
             writeStructInCAN(DATArobot);                             //CAN
-    //         if (deviceConnected){
-    //             pTxCharacteristic->setValue((uint8_t *)&DATArobot, sizeof(DATArobot));
-	// 	        pTxCharacteristic->notify();
-    // ////Serial.println("Sending via BT...");
-    //     }else{if(!nbprint){Serial.println("The device is not connected"); nbprint ++;}}
             #endif
         }
         #endif
@@ -2828,7 +2766,7 @@ void Moteur_Init(){
   setupPWM(PWM_MOTD, PWMDChannel);
   setupPWM(PWM_MOTG, PWMGChannel);
 }
-//----------------------------------------------------------------------fonctions CAN et BLE
+//----------------------------------------------------------------------fonctions CAN
 
 void setupCAN(){
   while (!Serial);
@@ -2887,19 +2825,6 @@ void canReadExtRtr(){//On n'execute plus cette fonction pour compléter la msg C
   
   //printCANMsg(rxMsg[FIFO_ecriture]);
 //   FIFO_ecriture=(FIFO_ecriture+1)%SIZE_FIFO;
-}
-
-void readDATA(std::string contenuBT, CANMessage &theDATA){
-
-  theDATA.extented = contenuBT[0];
-  theDATA.RTR = contenuBT[1];
-  theDATA.ID = contenuBT[4] + (contenuBT[5]<<8) + (contenuBT[6]<<16) + (contenuBT[7]<<24);
-  theDATA.ln = contenuBT[8];
-  int i;
-  for(i=0;i<8;i++)
-  {
-    theDATA.dt[i]=contenuBT[i+9];
-  }
 }
 
 void printCANMsg(CANMessage& msg) {
@@ -2972,59 +2897,6 @@ void CANenvoiMsg3x2Bytes(uint32_t id, int16_t data1, int16_t data2, int16_t data
     DATArobot.dt[4] = data3 & 0xFF;
     DATArobot.dt[5] = (data3 >> 8) & 0xFF;
     writeStructInCAN(DATArobot);
-}
-void masterBTConnect(std::string name){
-  // Create the BLE Device
-	//Serial.println("Create the BLE Device..");
-	BLEDevice::init("BaseRoulante");
-
-	// Create the BLE Server
-	//Serial.println("Create the BLE Server..");
-	pServer = BLEDevice::createServer();
-	pServer->setCallbacks(new MyServerCallbacks());
-
-	// Create the BLE Service
-	BLEService *pService = pServer->createService(SERVICE_UUID);
-
-	// Create a BLE Characteristic
-	pTxCharacteristic = pService->createCharacteristic(
-										  CHARACTERISTIC_UUID_TX,
-		                                  BLECharacteristic::PROPERTY_NOTIFY);
-                      
-	pTxCharacteristic->addDescriptor(new BLE2902());
-
-	BLECharacteristic * pRxCharacteristic = pService->createCharacteristic(
-											   CHARACTERISTIC_UUID_RX,
-		                                       BLECharacteristic::PROPERTY_WRITE);
-
-	pRxCharacteristic->setCallbacks(new MyCallbacks());
-
-	// Start the service
-	pService->start();
-
-	// Start advertising
-	//pServer->getAdvertising()->start();
-  BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
-  pAdvertising->addServiceUUID(SERVICE_UUID);
-  pAdvertising->setScanResponse(false);
-  pAdvertising->setMinPreferred(0x0);  // set value to 0x00 to not advertise this parameter
-  BLEDevice::startAdvertising();
-
-	//Serial.println("Waiting a client connection to notify...");
-}
-void BtActualise(){
-    // disconnecting
-	if(!deviceConnected && oldDeviceConnected) {
-		pServer->startAdvertising();   // restart advertising
-		//Serial.println("start advertising");
-		oldDeviceConnected = deviceConnected;
-	}
-	// connecting
-	if(deviceConnected && !oldDeviceConnected) {
-		// do stuff here on connecting
-        oldDeviceConnected = deviceConnected;
-	}
-  
 }
 //----------------------------------------------------------------------autres fonctions
 /****************************************************************************************/
