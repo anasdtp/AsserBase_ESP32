@@ -11,10 +11,6 @@
 
 //----------------------------------------------------------------------Variables
 
-
-
-
-
 volatile uint16_t          mscount = 0,      // Compteur utilisé pour envoyer échantillonner les positions et faire l'asservissement
                          mscount1 = 0,     // Compteur utilisé pour envoyer échantillonner les positions et faire l'asservissement
                          mscount2 = 0;     // Compteur utilisé pour envoyer la trame CAN d'odométrie
@@ -43,6 +39,7 @@ bool set = false;
 struct Ordre_deplacement liste;
 
 //----------------------------------------------------------------------prototypes fonctions 
+void TempsEchantionnage();
 //Fonctions principales : 
 void calcul(void);
 void CANloop();
@@ -55,21 +52,19 @@ void setup() {
   init_coef();
   setupCAN();
   
-  Encodeur_Init();
-  Serial.printf("fin encodeur init\n");
-  Moteur_Init();
-  Serial.printf("fin moteur init\n");
+  Encodeur_Init(); Serial.printf("fin encodeur init\n");
+  
+  Moteur_Init(); Serial.printf("fin moteur init\n");
+  
   AsserInitCoefs(Kp, Ki, Kd);
   Asser_Init();
   //Interruption : le programme est cadence grâce a l'interrutpion du Timer
-  init_Timer();
-  Serial.printf("fin init Timer\n");
-
+  init_Timer(); Serial.printf("fin init Timer\n");
   
   remplirStruct(DATArobot, ALIVE_MOTEUR,0,0,0,0,0,0,0,0,0);
-  writeStructInCAN(DATArobot);
-  Serial.printf("envoie CAN ALIVE_MOTEUR\n");
-  //Serial.println("fin setup\n");
+  writeStructInCAN(DATArobot); Serial.printf("envoie CAN ALIVE_MOTEUR\n");
+  
+  Serial.println("fin setup\n");
   
   /*liste.type = TYPE_DEPLACEMENT_LIGNE_DROITE;//test
   liste.distance = 1000;*/
@@ -80,7 +75,12 @@ void loop() {
   CANloop();
   calcul();
   Odometrie();
-  if (mscount >= (TE_100US)) 
+
+  TempsEchantionnage();   
+}
+
+void TempsEchantionnage(){
+    if (mscount >= (TE_100US)) 
   {   
     //Serial.println("erreur temp calcul");
     //Serial.println(mscount);
@@ -93,7 +93,7 @@ void loop() {
   }
   //digitalWrite(27, set);//pour mesurer le temps de boucle avec l'oscilloscope
   //set = !set; temps de boucle = 1/(freq/2)
-  mscount = 0;    
+  mscount = 0; 
 }
 //----------------------------------------------------------------------fonctions
 /***************************************************************************************
@@ -1146,5 +1146,3 @@ void test_accel(void)//fonctionne
         break;
     }
 }
-
-
