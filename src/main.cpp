@@ -9,9 +9,12 @@
 #include <timerAsserBas.h>
 #include <moteur.h>
 
+
+ 
+
 //----------------------------------------------------------------------Variables
 
-volatile uint16_t          mscount = 0,      // Compteur utilisé pour envoyer échantillonner les positions et faire l'asservissement
+volatile uint16_t        mscount = 0,      // Compteur utilisé pour envoyer échantillonner les positions et faire l'asservissement
                          mscount1 = 0,     // Compteur utilisé pour envoyer échantillonner les positions et faire l'asservissement
                          mscount2 = 0;     // Compteur utilisé pour envoyer la trame CAN d'odométrie
 
@@ -39,7 +42,7 @@ bool set = false;
 struct Ordre_deplacement liste;
 
 //----------------------------------------------------------------------prototypes fonctions 
-void TempsEchantionnage();
+
 //Fonctions principales : 
 void calcul(void);
 void CANloop();
@@ -52,9 +55,9 @@ void setup() {
   init_coef();
   setupCAN();
   
-  Encodeur_Init(); Serial.printf("fin encodeur init\n");
+  Encodeur_Init(36, 39, 23, 22); Serial.printf("fin encodeur init\n");
   
-  Moteur_Init(); Serial.printf("fin moteur init\n");
+  Moteur_Init(inApin_MOTD, inApin_MOTG, inBpin_MOTD, inBpin_MOTG, PWMD_Channel, PWMG_Channel); Serial.printf("fin moteur init\n");
   
   AsserInitCoefs(Kp, Ki, Kd);
   Asser_Init();
@@ -72,29 +75,14 @@ void setup() {
 }
 //----------------------------------------------------------------------loop
 void loop() {
-  CANloop();
-  calcul();
-  Odometrie();
-
-  TempsEchantionnage();   
+    if(TempsEchantionnage(TE_100US)){
+        CANloop();
+        calcul();
+        Odometrie(); 
+    }
 }
 
-void TempsEchantionnage(){
-    if (mscount >= (TE_100US)) 
-  {   
-    //Serial.println("erreur temp calcul");
-    //Serial.println(mscount);
-    remplirStruct(DATArobot,ERREUR_TEMP_CALCUL,2, mscount,TE_100US,0,0,0,0,0,0);
-    writeStructInCAN(DATArobot);
-  }
-  else 
-  {
-    while (mscount<(TE_100US));
-  }
-  //digitalWrite(27, set);//pour mesurer le temps de boucle avec l'oscilloscope
-  //set = !set; temps de boucle = 1/(freq/2)
-  mscount = 0; 
-}
+
 //----------------------------------------------------------------------fonctions
 /***************************************************************************************
  NOM : calcul                                                              
@@ -482,7 +470,7 @@ void calcul(void){//fait!!
                 //On conserve la position du robot pour la prochaine action
                 
                 consigne_pos = 0;
-                roue_drt_init = lireCodeurD();
+                roue_drt_init = lireCodeurD();//Ou on pourrait remettre à zero le compteur
                 roue_gch_init = lireCodeurG();
                 
                 cpt_ordre ++;
@@ -557,7 +545,7 @@ void CANloop(){
 
             case ESP32_RESTART:
                 //Serial.println("ESP32_RESTART");
-                //esp_restart();
+                esp_restart();
                 
                 break;
             case ASSERVISSEMENT_REQUETE_PID:
@@ -1044,29 +1032,23 @@ void Odometrie(void)//fait
     //Recuperation des valeurs des compteurs des encodeurs  
     Odo_val_pos_D = lireCodeurD();
     Odo_val_pos_G = lireCodeurG();
-    double erreur = Odo_val_pos_D - Odo_val_pos_G;
-    //Calcul de la distance parcourue
-    dist = 0.5*((Odo_val_pos_D - Odo_last_val_pos_D) + (Odo_val_pos_G - Odo_last_val_pos_G));
 
-    
-      
+    //Calcul de la distance parcourue
+    dist = 0.5*((Odo_val_pos_D - Odo_last_val_pos_D) + (Odo_val_pos_G - Odo_last_val_pos_G)); //En ticks d'encodeur
+
     //Calcul de la valeur de l'angle parcouru
-    ang = (((Odo_val_pos_D - Odo_last_val_pos_D) -(Odo_val_pos_G - Odo_last_val_pos_G))*1800.0*PERIMETRE_ROUE_CODEUSE/(LARGEUR_ROBOT*M_PI*RESOLUTION_ROUE_CODEUSE));
+    ang = (((Odo_val_pos_D - Odo_last_val_pos_D) - (Odo_val_pos_G - Odo_last_val_pos_G))*1800.0*PERIMETRE_ROUE_CODEUSE/(LARGEUR_ROBOT*M_PI*RESOLUTION_ROUE_CODEUSE));//En dizieme d'angle
     
     //Determination de la position sur le terrain en X, Y, Theta
-    Odo_theta +=  ang;
-    Odo_x += dist*cos((double)(Odo_theta*M_PI/1800.0))*PERIMETRE_ROUE_CODEUSE/RESOLUTION_ROUE_CODEUSE;
-    Odo_y += dist*sin((double)(Odo_theta*M_PI/1800.0))*PERIMETRE_ROUE_CODEUSE/RESOLUTION_ROUE_CODEUSE;
+    Odo_theta +=  ang;//En dizieme d'angle
+    Odo_x += dist*cos((double)(Odo_theta*M_PI/1800.0))*PERIMETRE_ROUE_CODEUSE/RESOLUTION_ROUE_CODEUSE;//En mm
+    Odo_y += dist*sin((double)(Odo_theta*M_PI/1800.0))*PERIMETRE_ROUE_CODEUSE/RESOLUTION_ROUE_CODEUSE;//En mm
     ////Serial.println(Odo_x); 
 
-    
     //Stockage de la derniere valeur de l'odometrie
     Odo_last_val_pos_D = Odo_val_pos_D;
     Odo_last_val_pos_G = Odo_val_pos_G;
-    
-    /**/
-    
-    /**/
+
     mscount1 ++;    
     //Condition d'envoi des informations de l'odometrie par CAN 
     if(mscount1 >= (500/TE_100US))//toutes les 50ms
@@ -1080,14 +1062,11 @@ void Odometrie(void)//fait
         CANenvoiMsg3x2Bytes(ODOMETRIE_SMALL_POSITION, Odo_x, Odo_y, ((int16_t)Odo_theta) % 3600);
         //CANenvoiMsg3x2Bytes(ODOMETRIE_SMALL_POSITION, Odo_x, Odo_y, ((int16)Odo_theta) % 3600);
         //CANenvoiMsg3x2Bytes(DEBUG_ASSERV, QuadDec_D_GetCounter(), QuadDec_G_GetCounter(), consigne_pos);
-
     }
-    
-        
-    
 }  
 
-void test_accel(void)//fonctionne
+
+void test_accel(void)
 {
     static int etat_test_accel = 0;
     static double posG, posD, lposG, lposD;

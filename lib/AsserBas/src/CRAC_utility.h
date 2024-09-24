@@ -104,7 +104,10 @@
 #define Dmax_coef 6000.0          // 6000       DANGER>>>>>>> chauffage micro
 #define Ama_clo_coef 1500.0
 #define TE (TE_100US*0.0001) //soit 2.5ms
-void Encodeur_Init();
+
+
+
+void Encodeur_Init(int A_1 = 36, int B_1 = 39, int A_2 = 23, int B_2 = 22);
 
 void write_PWMD(double vit);
 void write_PWMG(double vit);
@@ -197,11 +200,15 @@ extern buf_circ_t buffer_distanceG;
 extern buf_circ_t buffer_distanceD;
 extern char flagDebutBezier;
 
-const int PWM_MOTD = 17;    // PIN18
-const int PWM_MOTG = 18;    
-const int PWMDChannel = 3;
-const int PWMGChannel = 2;
 
+const int inApin_MOTD = 26, // INA2 checked
+     inBpin_MOTD = 25, // INB2 checked
+     inApin_MOTG = 16, // INA1 checked
+     inBpin_MOTG = 15, // INB1 checked
+        PWM_MOTD = 17,    
+        PWM_MOTG = 18,
+        PWMD_Channel = 3,
+        PWMG_Channel = 2;
 
 #endif
 /****************************************************************************************/

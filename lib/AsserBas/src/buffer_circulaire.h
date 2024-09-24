@@ -4,6 +4,8 @@
 
 #include <stdint.h>
 
+//Je sais pas ce que c'est mais c'est là
+
 typedef struct {
     float * buffer;
     int head;

@@ -269,8 +269,8 @@ void Mouvement_Elementaire(long pcons, short vmax, short amax, short dmax, char 
     break;
     }
     
-    if((etat_automate_depl != INITIALISATION)&&(etat_automate_depl != ARRET_STOP))
-    {
+    // if((etat_automate_depl != INITIALISATION)&&(etat_automate_depl != ARRET_STOP))
+    // {
         //Calcul des commandes
         double cmdD, cmdG, erreur;
         
@@ -298,12 +298,14 @@ void Mouvement_Elementaire(long pcons, short vmax, short amax, short dmax, char 
             }
         }*/
         //Ecriture du PWM sur chaque modeur
-        write_PWMG(cmdG);   
+        Serial.print("cmdG : "); Serial.print(cmdG);
+        write_PWMG(cmdG);
+        //Serial.print("cmdG : "); Serial.print(cmdG);
         write_PWMD(cmdD);
         
         //Arret si le robot est bloqué
         lectureErreur();
-    }
+    // }
 }
 
 
@@ -584,7 +586,7 @@ void X_Y_Theta(long px, long py, long ptheta, long sens, short vmax, short amax)
             if(sens >= 0)
                 {
                     // Son hypothénuse correspond à la distance à parcourir
-                    dist = (short)sqrt((px - Odo_x)*(px - Odo_x)+(py - Odo_y)*(py - Odo_y));
+                    dist = sqrt((px - Odo_x)*(px - Odo_x)+(py - Odo_y)*(py - Odo_y));
 
                     
                     
@@ -596,7 +598,7 @@ void X_Y_Theta(long px, long py, long ptheta, long sens, short vmax, short amax)
                     //ang1 = (short)((atan2((double)(py - Odo_y), (double)(px - Odo_x)) * 1800 / PI) - Odo_theta + 7200) % 3600;
                     
                     if((((py-Odo_y)!=0)&&((px-Odo_x)!=0))||((px-Odo_x)!=0)){
-                        ang1 = (short)((atan2((double)(py - Odo_y), (double)(px - Odo_x)) * 1800 / M_PI) - Odo_theta + 7200) % 3600;}
+                        ang1 = (long)((atan2((double)(py - Odo_y), (double)(px - Odo_x)) * 1800 / M_PI) - Odo_theta + 7200) % 3600;}
                         
                     // On passe le résultat entre -1800 et 1800
                     if(ang1 > 1800) {ang1 = (ang1 - 3600);}
@@ -604,17 +606,17 @@ void X_Y_Theta(long px, long py, long ptheta, long sens, short vmax, short amax)
                     // La 2è rotation correspond à l'angle de destination, moins l'angle à la fin de la ligne droite,
                     // donc le même qu'à la fin de la 1ère rotation, donc l'angle de départ plus la première rotation
                     // On ajoute 3600 pour être sûr d'avoir un résultat positif
-                    ang2 = (short)(ptheta - ang1 - Odo_theta + 3600) % 3600;
+                    ang2 = (long)(ptheta - ang1 - Odo_theta + 3600) % 3600;
                     
                     // On passe le résultat entre -1800 et 1800
                     if(ang2 > 1800) ang2 = (ang2 - 3600);
-                    Serial.printf("X_Y_Theta : Dist : %f, ang1 : %hd, ang2 : %hd       ;       ", dist, ang1, ang2); 
+                    // Serial.printf("X_Y_Theta : Dist : %f, ang1 : %hd, ang2 : %hd       ;       ", dist, ang1, ang2); 
                     // On transforme les résultats en distance et angles utilisables avec les fonctions déjà définies
                     dist = dist * (RESOLUTION_ROUE_CODEUSE / PERIMETRE_ROUE_CODEUSE);
                     ang1 = LARGEUR_ROBOT * M_PI * RESOLUTION_ROUE_CODEUSE * ang1 / (3600 * PERIMETRE_ROUE_CODEUSE);
                     ang2 = LARGEUR_ROBOT * M_PI * RESOLUTION_ROUE_CODEUSE * ang2 / (3600 * PERIMETRE_ROUE_CODEUSE);
 
-                    Serial.printf("X_Y_Theta : Dist : %f, ang1 : %hd, ang2 : %hd\n", dist, ang1, ang2); 
+                    // Serial.printf("X_Y_Theta : Dist : %f, ang1 : %hd, ang2 : %hd\n", dist, ang1, ang2); 
                     
                 }
             
@@ -624,18 +626,18 @@ void X_Y_Theta(long px, long py, long ptheta, long sens, short vmax, short amax)
                 // Idem qu'au-dessus, mais laligne droite doit être faite en marche arrière
                 // La distance est l'opposé de celle calculée au dessus
                 // Les angles sont les mêmes à 1800 près
-                dist = -(short)sqrt((px-Odo_x)*(px-Odo_x)+(py-Odo_y)*(py-Odo_y));
+                dist = -(long)sqrt((px-Odo_x)*(px-Odo_x)+(py-Odo_y)*(py-Odo_y));
                
                 //Premiere rotation
                 //ang1 = (short)(((atan2((double)(py - Odo_y), (double)(px - Odo_x)) * 1800 / PI) - Odo_theta) + 5400) % 3600;
                 
                 if((((py-Odo_y)!=0)&&((px-Odo_x)!=0))||((px-Odo_x)!=0))
-                        ang1 = (short)((atan2((double)(py - Odo_y), (double)(px - Odo_x)) * 1800 / M_PI) - Odo_theta + 5400) % 3600;
+                        ang1 = (long)((atan2((double)(py - Odo_y), (double)(px - Odo_x)) * 1800 / M_PI) - Odo_theta + 5400) % 3600;
                         
                 if(ang1 > 1800) {ang1 = (ang1 - 3600);}
                 
                 //Deuxieme rotation
-                ang2 = (short)(ptheta - ang1 - Odo_theta + 3600) % 3600;
+                ang2 = (long)(ptheta - ang1 - Odo_theta + 3600) % 3600;
                 
                 if(ang2 > 1800) {ang2 = (ang2 - 3600);}
                 
@@ -1300,8 +1302,8 @@ void Mouvement_Elementaire_Gene(struct Ordre_deplacement monDpl)//fait
         cpt ++;
         
         //Incrementation de la consigne de vitesse par la valeur de l'acceleration
-        if (pcons>0) consigne_vit += accel;
-        else consigne_vit -= accel;
+        if (pcons>0) {consigne_vit += accel;}
+        else {consigne_vit -= accel;}
         
         //Incrementation de la consigne de position
         consigne_pos += consigne_vit;
@@ -1331,8 +1333,8 @@ void Mouvement_Elementaire_Gene(struct Ordre_deplacement monDpl)//fait
         cpt ++;
          
         //Incrementation de la consigne de vitesse par la valeur de l'acceleration
-        if (pcons>0) consigne_vit -= decel;
-        else consigne_vit += decel;
+        if (pcons>0) {consigne_vit -= decel;}
+        else{ consigne_vit += decel;}
         
         //Incrementation de la consigne de position
         consigne_pos += consigne_vit;

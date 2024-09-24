@@ -1,5 +1,7 @@
 #include "espCan.h"
 
+//Il faudrait faire des classes au lieu d'avoir des fonctions dans tous les sens
+
 CANMessage myData;//data received by BT to write on CAN
 CANMessage DATAtoSend;//data received by CAN to send on BT
 CANMessage rxMsg[SIZE_FIFO];//data received by CAN to control the robot
@@ -16,10 +18,7 @@ short           etat_automate = 0, etat_automate_depl = 0, new_message = 0,
                 xytheta_sens, next_move_xyt = 0, next_move = 0, i, stop = 0, stop_receive = 0, param_xytheta[3],
                 etat_automate_xytheta = 0, ralentare = 0;
 
-bool onPrendsEnCompte(uint16_t ID);
-
-
-
+bool onPrendsEnCompte(uint16_t ID);//Fonction pour filtrer les ID venant du can et gagner du temps de traitement
 
 void setupCAN(){
   while (!Serial);
@@ -33,21 +32,22 @@ void setupCAN(){
 }
 
 
-void canReadData(int packetSize){
-  remplirStruct(rxMsg[FIFO_ecriture], 0,0,0,0,0,0,0,0,0,0); //A tester si ça ne surcharge pas
-  rxMsg[FIFO_ecriture].ID = CAN.packetId();
-  if(!onPrendsEnCompte(rxMsg[FIFO_ecriture].ID)){return;}//A regarder si rajouter ça ça ne surcharge pas l'interruption
-  rxMsg[FIFO_ecriture].ln = CAN.packetDlc();
-  //Serial.printf("Received CAN, ID : 0x%.3X ; len : %d\n", rxMsg[FIFO_ecriture].ID, rxMsg[FIFO_ecriture].ln);
-  // only print packet rxMsg[FIFO_ecriture].dt for non-RTR packets
-  int i = 0;
-  while (CAN.available())
-  {
-    rxMsg[FIFO_ecriture].dt[i]=CAN.read();
-    i++;
-  }
-//   canAvailable = true;
-    FIFO_ecriture=(FIFO_ecriture+1)%SIZE_FIFO;
+void canReadData(int packetSize){//Interruption trés sensible aux surcharge d'instructions : doit faire le moins d'instructions possibles
+    remplirStruct(rxMsg[FIFO_ecriture], 0,0,0,0,0,0,0,0,0,0);
+    rxMsg[FIFO_ecriture].ID = CAN.packetId();
+    if(!onPrendsEnCompte(rxMsg[FIFO_ecriture].ID)){return;}
+    rxMsg[FIFO_ecriture].ln = CAN.packetDlc();
+    
+    int i = 0;
+    while (CAN.available())
+    {
+        rxMsg[FIFO_ecriture].dt[i]=CAN.read();
+        i++;
+    }
+
+    FIFO_ecriture=(FIFO_ecriture+1)%SIZE_FIFO;//On la rajoute à la pile, en attente de traitement
+
+    //Cette fonction ne prends pas en compte si le message est extented ou si il est rtr
 }
 
 void canReadExtRtr(){//On n'execute plus cette fonction pour compléter la msg CAN car on part du principe qu'on n'utilise pas de ID extented et de msg rtr
@@ -65,9 +65,6 @@ void canReadExtRtr(){//On n'execute plus cette fonction pour compléter la msg C
   //printCANMsg(rxMsg[FIFO_ecriture]);
 //   FIFO_ecriture=(FIFO_ecriture+1)%SIZE_FIFO;
 }
-
-
-
 
 void remplirStruct(CANMessage &theDATA, int idf, char lenf, char dt0f, char dt1f, char dt2f, char dt3f, char dt4f, char dt5f, char dt6f, char dt7f){
   theDATA.RTR = false;
@@ -92,7 +89,6 @@ void remplirStruct2x4Bytes(uint32_t id, void *pdata1, void *pdata2){
     DATArobot.ln = 8;
     memcpy(&DATArobot.dt, pdata1, 4);
     memcpy(&(DATArobot.dt[4]), pdata2, 4);
-    
 }
 
 void writeStructInCAN(const CANMessage &theDATA){
@@ -157,10 +153,7 @@ void printCANMsg(CANMessage& msg) {
     printf("  Data    = 0x");            
     for(int i = 0 ; i < msg.ln ; i++){printf(" %.2X", msg.dt[i]);}
     printf("\n");
- }
-
-
-
+}
 
 bool onPrendsEnCompte(uint16_t ID){
     switch (ID)

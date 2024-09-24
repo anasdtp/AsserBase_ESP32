@@ -1,6 +1,8 @@
 #include <Arduino.h>
 #define CLOTHO_H_INCLUDED
 
+//Je sais pas ce que c'est mais c'est là
+
 //typedef struct clothoStruc clothoStruct;
     
     

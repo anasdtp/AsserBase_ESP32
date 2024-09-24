@@ -29,15 +29,16 @@ BUF_CIRC_DEF(buffer_distanceG, 50);
 BUF_CIRC_DEF(buffer_distanceD, 50);
 ESP32Encoder EncoderDroite;
 ESP32Encoder EncoderGauche;
-void Encodeur_Init()
+void Encodeur_Init(int A_1, int B_1, int A_2, int B_2)
 {
+    // A_1 = 36 B_1 = 39 A_2 = 23 B_2 = 22
     // ESP32Encoder::useInternalWeakPullResistors=DOWN;
     //  Enable the weak pull up resistors
     ESP32Encoder::useInternalWeakPullResistors = UP;
     // use pin 23 and 22 for the first encoder
-    EncoderGauche.attachFullQuad(36, 39);
+    EncoderGauche.attachFullQuad(A_1, B_1);
     // use pin 39 and 36 for the second encoder
-    EncoderDroite.attachFullQuad(23, 22);
+    EncoderDroite.attachFullQuad(A_2, B_2);
     // clear the encoder's raw count and set the tracked count to zero
     EncoderDroite.clearCount();
     EncoderGauche.clearCount();
@@ -262,7 +263,7 @@ double lireCodeurG(void)
 }
 /****************************************************************************************/
 /* NOM : write_PWMD                                                                     */
-/* ARGUMENT : entier                                                                    */
+/* ARGUMENT : double                                                                    */
 /* RETOUR : rien                                                                        */
 /* DESCRIPTIF : permet de choisir la vitesse du moteur 1                                */
 /****************************************************************************************/
@@ -294,7 +295,7 @@ void write_PWMD(double vitD)
 }
 /****************************************************************************************/
 /* NOM : write_PWMG                                                                     */
-/* ARGUMENT : entier                                                                    */
+/* ARGUMENT : double                                                                    */
 /* RETOUR : rien                                                                        */
 /* DESCRIPTIF : permet de choisir la vitesse du moteur 2                                */
 /****************************************************************************************/
@@ -355,27 +356,27 @@ int signesDif(double v1, double v2)
 }
 void Moteur_D_INA_Write(bool set)
 {
-    digitalWrite(26, set);
+    digitalWrite(inApin_MOTD, set);
 }
 void Moteur_D_INB_Write(bool set)
 {
-    digitalWrite(25, set);
+    digitalWrite(inBpin_MOTD, set);
 }
 void Moteur_G_INA_Write(bool set)
 {
-    digitalWrite(16, set);
+    digitalWrite(inApin_MOTG, set);
 }
 void Moteur_G_INB_Write(bool set)
 {
-    digitalWrite(15, set);
+    digitalWrite(inBpin_MOTG, set);
 }
 void PWM_D_WriteCompare(int vitD)
 {
-    ledcWrite(PWMDChannel, vitD);
+    ledcWrite(PWMD_Channel, vitD);
 }
 void PWM_G_WriteCompare(int vitG)
 {
-    ledcWrite(PWMGChannel, vitG);
+    ledcWrite(PWMG_Channel, vitG);
 }
 /* [] END OF FILE */
 
